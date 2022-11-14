@@ -1,0 +1,18 @@
+{
+    "editor.hover.sticky": true,
+    "files.exclude": {
+        "**/.git": true,
+        "**/target": true,
+        "**/Cargo.lock": true
+    },
+    "search.exclude": {
+        "**/.vscode": true,
+        "**/.git": true,
+        "**/target": true,
+        "**/Cargo.lock": true,
+    },
+    "[rust]": {
+        "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        "editor.formatOnSave": true
+    }
+}
