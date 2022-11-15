@@ -62,7 +62,7 @@ impl Cpu {
 		Self {
 			system,
 			sram: Sram::default(),
-			sp: 0x00,
+			sp: 0x0000,
 			status: Sreg::default(),
 			pc: 0x0000,
 			cycles: 0,
@@ -71,7 +71,7 @@ impl Cpu {
 
 	pub fn reset(&mut self) {}
 
-	pub fn add(&mut self, opcode: u16) {
+	fn add(&mut self, opcode: u16) {
 		// 0000 11rd dddd rrrr
 
 		let mut rd = ((opcode & 0xF0) >> 4) as u8;
@@ -414,7 +414,7 @@ impl Cpu {
 
 	fn pop(&mut self, opcode: u16) {}
 
-	pub fn nop(&mut self) {
+	fn nop(&mut self) {
 		self.cycles += 1;
 	}
 
