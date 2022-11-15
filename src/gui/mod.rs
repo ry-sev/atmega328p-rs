@@ -15,7 +15,7 @@ pub struct App {
 	menu_bar: MenuBar,
 	cpu_state: CpuState,
 	memory_view: MemoryView,
-	run: bool,
+	running: bool,
 }
 
 impl App {
@@ -29,7 +29,7 @@ impl App {
 
 impl eframe::App for App {
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-		if self.run {
+		if self.running {
 			self.cpu.step();
 		}
 
@@ -39,15 +39,15 @@ impl eframe::App for App {
 
 		egui::TopBottomPanel::top("toolbar_panel").show(ctx, |ui| {
 			ui.horizontal_centered(|ui| {
-				if self.run {
+				if self.running {
 					if ui.button("Pause").clicked() {
-						self.run = false;
+						self.running = false;
 					}
 				} else if ui.button("Run").clicked() {
-					self.run = true;
+					self.running = true;
 				}
 
-				let sense_type = if self.run {
+				let sense_type = if self.running {
 					Sense::hover()
 				} else {
 					Sense::click()
