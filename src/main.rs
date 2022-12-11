@@ -18,7 +18,7 @@ fn main() {
 	let options = eframe::NativeOptions {
 		initial_window_size: Some(egui::vec2(1400.0, 900.0)),
 		min_window_size: Some(egui::vec2(1400.0, 900.0)),
-		default_theme: Theme::Light,
+		default_theme: Theme::Dark,
 		..Default::default()
 	};
 
