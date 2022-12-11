@@ -5,13 +5,10 @@ mod instructions {
 	#[test]
 	fn add() {
 		let mut cpu = Cpu::init(System::default());
-
-		let prg_start = 0x0000;
-
 		let prg: [u16; 4] = [0x0C00, 0x0D7A, 0x0E75, 0x0F35];
 
 		for (index, word) in prg.into_iter().enumerate() {
-			cpu.system.program_memory.app_flash.data[prg_start + index] = word;
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
 		}
 
 		cpu.sram.registers[0] = 10;
@@ -36,11 +33,10 @@ mod instructions {
 	#[test]
 	fn adc() {
 		let mut cpu = Cpu::init(System::default());
-		let prg_start = 0x0000;
 		let prg: [u16; 4] = [0x1C28, 0x1D48, 0x1E5A, 0x1FCF];
 
 		for (index, word) in prg.into_iter().enumerate() {
-			cpu.system.program_memory.app_flash.data[prg_start + index] = word;
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
 		}
 
 		cpu.status.set_byte(0x1);
@@ -74,11 +70,10 @@ mod instructions {
 	#[test]
 	fn adiw() {
 		let mut cpu = Cpu::init(System::default());
-		let prg_start = 0x0000;
 		let prg: [u16; 4] = [0x9600, 0x9628, 0x96A3, 0x96FF];
 
 		for (index, word) in prg.into_iter().enumerate() {
-			cpu.system.program_memory.app_flash.data[prg_start + index] = word;
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
 		}
 
 		cpu.sram.registers[24] = 2;
@@ -113,5 +108,25 @@ mod instructions {
 		assert_eq!(cpu.sram.registers[31], 86);
 
 		assert_eq!(cpu.cycles, 8);
+	}
+
+	#[test]
+	fn and() {
+		let mut cpu = Cpu::init(System::default());
+		let prg: [u16; 2] = [0x2000, 0x2038];
+
+		for (index, word) in prg.into_iter().enumerate() {
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
+		}
+
+		cpu.sram.registers[0] = 0;
+		cpu.sram.registers[3] = 67;
+		cpu.sram.registers[8] = 13;
+
+		cpu.step();
+		cpu.step();
+
+		assert_eq!(cpu.sram.registers[0], 0);
+		assert_eq!(cpu.sram.registers[3], 1);
 	}
 }
