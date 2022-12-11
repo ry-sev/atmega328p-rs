@@ -31,6 +31,7 @@ impl eframe::App for App {
 	fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
 		if self.running {
 			self.cpu.step();
+			ctx.request_repaint();
 		}
 
 		egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
@@ -82,6 +83,5 @@ impl eframe::App for App {
 		egui::CentralPanel::default().show(ctx, |ui| {
 			egui::warn_if_debug_build(ui);
 		});
-		ctx.request_repaint();
 	}
 }
