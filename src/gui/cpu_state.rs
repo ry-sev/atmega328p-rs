@@ -1,5 +1,5 @@
 use crate::{cpu::Cpu, memory::REGISTER_NAMES};
-use egui_extras::{Size, TableBuilder};
+use egui_extras::{Column, TableBuilder};
 
 const PADDING_SIZE: f32 = 4.0;
 
@@ -26,9 +26,9 @@ impl RegisterTab {
 		let table = TableBuilder::new(ui)
 			.striped(true)
 			.cell_layout(egui::Layout::left_to_right(egui::Align::LEFT))
-			.column(Size::exact(50.0))
-			.column(Size::exact(60.0))
-			.column(Size::remainder())
+			.column(Column::exact(50.0))
+			.column(Column::exact(60.0))
+			.column(Column::remainder())
 			.resizable(false);
 
 		table
