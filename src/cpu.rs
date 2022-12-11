@@ -58,9 +58,9 @@ pub struct Cpu {
 }
 
 impl Cpu {
-	pub fn init(system: System) -> Self {
+	pub fn init() -> Self {
 		Self {
-			system,
+			system: System::default(),
 			sram: Sram::default(),
 			sp: 0x0000,
 			status: Sreg::default(),
