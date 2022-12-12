@@ -117,6 +117,11 @@ impl CpuState {
 
 				ui.end_row();
 
+				ui.label("Instruction:");
+				ui.label(format!("0x{:04X}", cpu.opcode));
+
+				ui.end_row();
+
 				ui.label("Stack Pointer:");
 				ui.label(format!("0x{:04X}", cpu.sp));
 

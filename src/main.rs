@@ -11,7 +11,6 @@ pub mod utils;
 
 use cpu::Cpu;
 use gui::App;
-use system::System;
 
 fn main() {
 	let options = eframe::NativeOptions {

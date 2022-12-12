@@ -1,6 +1,6 @@
 use crate::memory::{Memory, Sram};
 use crate::system::System;
-use crate::utils::{all_bits_u16, all_bits_u8, high_byte};
+use crate::utils::{bits_u16, bits_u8, high_byte};
 
 #[derive(Default, Debug, Clone)]
 #[allow(non_snake_case)]
@@ -55,6 +55,7 @@ pub struct Cpu {
 	pub status: Sreg,
 	pub pc: u16,
 	pub cycles: usize,
+	pub opcode: u16,
 }
 
 impl Cpu {
@@ -66,18 +67,25 @@ impl Cpu {
 			status: Sreg::default(),
 			pc: 0x0000,
 			cycles: 0,
+			opcode: 0x0000,
 		}
 	}
 
-	pub fn reset(&mut self) {}
+	pub fn reset(&mut self) {
+		self.sp = 0x0000;
+		self.pc = 0x0000;
+		self.cycles = 0;
+	}
 
-	fn add(&mut self, opcode: u16) {
+	// Arithmetic and Logic Instruction
+
+	fn add(&mut self) {
 		// 0000 11rd dddd rrrr
 
-		let mut rd = ((opcode & 0xF0) >> 4) as u8;
-		let mut rr = (opcode & 0xF) as u8;
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		let mut rr = (self.opcode & 0xF) as u8;
 
-		match high_byte(opcode) {
+		match high_byte(self.opcode) {
 			0x0D => rd += 16,
 			0x0E => rr += 16,
 			0x0F => {
@@ -89,16 +97,19 @@ impl Cpu {
 
 		let result = self.sram.registers[rd as usize] + self.sram.registers[rr as usize];
 
-		let r = all_bits_u8(result);
-		let rd_bits = all_bits_u8(rd);
-		let rr_bits = all_bits_u8(rr);
+		let r_bits = bits_u8(result);
+		let rd_bits = bits_u8(rd);
+		let rr_bits = bits_u8(rr);
 
-		self.status.H = (rd_bits.3 & rr_bits.3 | rr_bits.3 & !r.3 | !r.3 & rd_bits.3) == 1;
-		self.status.V = (rd_bits.7 & rr_bits.7 & !r.7 | !rd_bits.7 & !rr_bits.7 & r.7) == 1;
-		self.status.N = r.7 == 1;
-		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) != 0;
+		self.status.H =
+			(rd_bits.3 & rr_bits.3 | rr_bits.3 & !r_bits.3 | !r_bits.3 & rd_bits.3) == 1;
+		self.status.V =
+			(rd_bits.7 & rr_bits.7 & !r_bits.7 | !rd_bits.7 & !rr_bits.7 & r_bits.7) == 1;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
 		self.status.Z = result == 0;
-		self.status.C = (rd_bits.7 & rr_bits.7 | rr_bits.7 & !r.7 | !r.7 & rd_bits.7) == 1;
+		self.status.C =
+			(rd_bits.7 & rr_bits.7 | rr_bits.7 & !r_bits.7 | !r_bits.7 & rd_bits.7) == 1;
 
 		self.sram.registers[rd as usize] = result;
 
@@ -106,13 +117,13 @@ impl Cpu {
 		self.cycles += 1;
 	}
 
-	fn adc(&mut self, opcode: u16) {
+	fn adc(&mut self) {
 		// 0001 11rd dddd rrrr
 
-		let mut rd = ((opcode & 0xF0) >> 4) as u8;
-		let mut rr = (opcode & 0xF) as u8;
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		let mut rr = (self.opcode & 0xF) as u8;
 
-		match high_byte(opcode) {
+		match high_byte(self.opcode) {
 			0x1D => rd += 16,
 			0x1E => rr += 16,
 			0x1F => {
@@ -126,16 +137,18 @@ impl Cpu {
 			+ self.sram.registers[rr as usize]
 			+ self.status.C as u8;
 
-		let r = all_bits_u8(result);
-		let rd_bits = all_bits_u8(rd);
-		let rr_bits = all_bits_u8(rr);
+		let r_bits = bits_u8(result);
+		let rd_bits = bits_u8(rd);
+		let rr_bits = bits_u8(rr);
 
-		self.status.H = (rd_bits.3 & rr_bits.3 | rr_bits.3 & !r.3 & r.3 & rd_bits.3) == 1;
-		self.status.V = (rd_bits.7 & rr_bits.7 & !r.7 | !rd_bits.7 & !rr_bits.7 & r.7) == 1;
-		self.status.N = r.7 == 1;
-		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) != 0;
+		self.status.H = (rd_bits.3 & rr_bits.3 | rr_bits.3 & !r_bits.3 & r_bits.3 & rd_bits.3) == 1;
+		self.status.V =
+			(rd_bits.7 & rr_bits.7 & !r_bits.7 | !rd_bits.7 & !rr_bits.7 & r_bits.7) == 1;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
 		self.status.Z = result == 0;
-		self.status.C = (rd_bits.7 & rr_bits.7 | rr_bits.7 & !r.7 | !r.7 & rd_bits.7) == 1;
+		self.status.C =
+			(rd_bits.7 & rr_bits.7 | rr_bits.7 & !r_bits.7 | !r_bits.7 & rd_bits.7) == 1;
 
 		self.sram.registers[rd as usize] = result;
 
@@ -143,14 +156,14 @@ impl Cpu {
 		self.cycles += 1;
 	}
 
-	fn adiw(&mut self, opcode: u16) {
+	fn adiw(&mut self) {
 		// 1001 0110 KKdd KKKK
 
-		let mut k = opcode & 0xF;
-		k |= (opcode & (1 << 6)) >> 2;
-		k |= (opcode & (1 << 7)) >> 2;
+		let mut k = self.opcode & 0xF;
+		k |= (self.opcode & (1 << 6)) >> 2;
+		k |= (self.opcode & (1 << 7)) >> 2;
 
-		let d = (((opcode >> 4 & 0xF) & 0x3) * 2 + 24) as u8;
+		let d = (((self.opcode >> 4 & 0xF) & 0x3) * 2 + 24) as u8;
 
 		let rd_low = self.sram.registers[d as usize] as u16;
 		let rd_high = self.sram.registers[(d + 1) as usize] as u16;
@@ -164,36 +177,158 @@ impl Cpu {
 		self.sram.registers[d as usize] = result_low;
 		self.sram.registers[(d + 1) as usize] = result_high;
 
-		let r = all_bits_u16(result);
-		let rdh = all_bits_u8(result_high);
+		let r_bits = bits_u16(result);
+		let rdh_bits = bits_u8(result_high);
 
-		self.status.V = !rdh.7 & r.15 == 1;
-		self.status.N = r.15 == 1;
-		self.status.S = (self.status.N as u8) ^ (self.status.V as u8) == 1;
+		self.status.V = !rdh_bits.7 & r_bits.15 == 1;
+		self.status.N = r_bits.15 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
 		self.status.Z = result == 0;
-		self.status.C = !r.15 & rdh.7 == 1;
+		self.status.C = !r_bits.15 & rdh_bits.7 == 1;
 
 		self.pc += 1;
 		self.cycles += 2;
 	}
 
-	fn sub(&mut self, opcode: u16) {}
+	fn sub(&mut self) {
+		// 0001 10rd dddd rrrr
 
-	fn subi(&mut self, opcode: u16) {}
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		let mut rr = (self.opcode & 0xF) as u8;
 
-	fn sbc(&mut self, opcode: u16) {}
+		match high_byte(self.opcode) {
+			0x19 => rd += 16,
+			0x1A => rr += 16,
+			0x1B => {
+				rd += 16;
+				rr += 16;
+			}
+			_ => {}
+		}
 
-	fn sbci(&mut self, opcode: u16) {}
+		let result = self.sram.registers[rd as usize] - self.sram.registers[rr as usize];
 
-	fn sbiw(&mut self, opcode: u16) {}
+		let r_bits = bits_u8(result);
+		let rd_bits = bits_u8(rd);
+		let rr_bits = bits_u8(rr);
 
-	fn and(&mut self, opcode: u16) {
+		self.status.H =
+			(!rd_bits.3 & rr_bits.3 | rr_bits.3 & r_bits.3 | r_bits.3 & !rd_bits.3) == 1;
+		self.status.V =
+			(rd_bits.7 & !rr_bits.7 & !r_bits.7 | !rd_bits.7 & rr_bits.7 & r_bits.7) == 1;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+		self.status.C =
+			(!rd_bits.7 & rr_bits.7 | rr_bits.7 & r_bits.7 | r_bits.7 & !rd_bits.7) == 1;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn subi(&mut self) {
+		// 0101 KKKK dddd KKKK
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		rd += 16;
+
+		let k = ((((self.opcode >> 8) & 0xF) << 4) | (self.opcode & 0xF)) as u8;
+		let result = self.sram.registers[rd as usize] - k;
+
+		let r_bits = bits_u8(result);
+		let rd_bits = bits_u8(rd);
+		let k_bits = bits_u8(k);
+
+		self.status.H = (!rd_bits.3 & k_bits.3 | k_bits.3 & r_bits.3 | r_bits.3 & !rd_bits.3) == 1;
+		self.status.V = (rd_bits.7 & !k_bits.7 & !r_bits.7 | !rd_bits.7 & k_bits.7 & r_bits.7) == 1;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+		self.status.C = (!rd_bits.7 & k_bits.7 | k_bits.7 & r_bits.7 | r_bits.7 & !rd_bits.7) == 1;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn sbc(&mut self) {
+		// 0000 10rd dddd rrrr
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		let mut rr = (self.opcode & 0xF) as u8;
+
+		match high_byte(self.opcode) {
+			0x09 => rd += 16,
+			0x0A => rr += 16,
+			0x0B => {
+				rd += 16;
+				rr += 16;
+			}
+			_ => {}
+		}
+
+		let result = self.sram.registers[rd as usize]
+			- self.sram.registers[rr as usize]
+			- self.status.C as u8;
+
+		let r_bits = bits_u8(result);
+		let rd_bits = bits_u8(rd);
+		let rr_bits = bits_u8(rr);
+
+		self.status.H =
+			(!rd_bits.3 & rr_bits.3 | rr_bits.3 & r_bits.3 | r_bits.3 & !rd_bits.3) == 1;
+		self.status.V =
+			(rd_bits.7 & !rr_bits.7 & !r_bits.7 | !rd_bits.7 & rr_bits.7 & r_bits.7) == 1;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+		self.status.C =
+			(!rd_bits.7 & rr_bits.7 | rr_bits.7 & r_bits.7 | r_bits.7 & !rd_bits.7) == 1;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn sbci(&mut self) {
+		// 0100 KKKK dddd KKKK
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		rd += 16;
+
+		let k = ((((self.opcode >> 8) & 0xF) << 4) | (self.opcode & 0xF)) as u8;
+		let result = self.sram.registers[rd as usize] - k - self.status.C as u8;
+
+		let r_bits = bits_u8(result);
+		let rd_bits = bits_u8(rd);
+		let k_bits = bits_u8(k);
+
+		self.status.H = (!rd_bits.3 & k_bits.3 | k_bits.3 & r_bits.3 | r_bits.3 & !rd_bits.3) == 1;
+		self.status.V = (rd_bits.7 & !k_bits.7 & !r_bits.7 | !rd_bits.7 & k_bits.7 & r_bits.7) == 1;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+		self.status.C = (!rd_bits.7 & k_bits.7 | k_bits.7 & r_bits.7 | r_bits.7 & !rd_bits.7) == 1;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn sbiw(&mut self) {}
+
+	fn and(&mut self) {
 		// 0010 00rd dddd rrrr
 
-		let mut rd = ((opcode & 0xF0) >> 4) as u8;
-		let mut rr = (opcode & 0xF) as u8;
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		let mut rr = (self.opcode & 0xF) as u8;
 
-		match high_byte(opcode) {
+		match high_byte(self.opcode) {
 			0x21 => rd += 16,
 			0x22 => rr += 16,
 			0x23 => {
@@ -205,12 +340,12 @@ impl Cpu {
 
 		let result = self.sram.registers[rd as usize] & self.sram.registers[rr as usize];
 
-		let r = all_bits_u8(result);
+		let r = bits_u8(result);
 
 		self.status.V = false;
 		self.status.N = r.7 == 1;
 		self.status.Z = result == 0;
-		self.status.S = (self.status.N as u8) ^ (self.status.V as u8) == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
 
 		self.sram.registers[rd as usize] = result;
 
@@ -218,139 +353,143 @@ impl Cpu {
 		self.cycles += 1;
 	}
 
-	fn andi(&mut self, opcode: u16) {}
+	fn andi(&mut self) {}
 
-	fn or(&mut self, opcode: u16) {}
+	fn or(&mut self) {}
 
-	fn ori(&mut self, opcode: u16) {}
+	fn ori(&mut self) {}
 
-	fn eor(&mut self, opcode: u16) {}
+	fn eor(&mut self) {}
 
-	fn com(&mut self, opcode: u16) {}
+	fn com(&mut self) {}
 
-	fn neg(&mut self, opcode: u16) {}
+	fn neg(&mut self) {}
 
-	fn sbr(&mut self, opcode: u16) {}
+	fn sbr(&mut self) {}
 
-	fn cbr(&mut self, opcode: u16) {}
+	fn cbr(&mut self) {}
 
-	fn inc(&mut self, opcode: u16) {}
+	fn inc(&mut self) {}
 
-	fn dec(&mut self, opcode: u16) {}
+	fn dec(&mut self) {}
 
-	fn tst(&mut self, opcode: u16) {}
+	fn tst(&mut self) {}
 
-	fn clr(&mut self, opcode: u16) {}
+	fn clr(&mut self) {}
 
-	fn ser(&mut self, opcode: u16) {}
+	fn ser(&mut self) {}
 
-	fn mul(&mut self, opcode: u16) {}
+	fn mul(&mut self) {}
 
-	fn muls(&mut self, opcode: u16) {}
+	fn muls(&mut self) {}
 
-	fn mulsu(&mut self, opcode: u16) {}
+	fn mulsu(&mut self) {}
 
-	fn fmul(&mut self, opcode: u16) {}
+	fn fmul(&mut self) {}
 
-	fn fmuls(&mut self, opcode: u16) {}
+	fn fmuls(&mut self) {}
 
-	fn fmulsu(&mut self, opcode: u16) {}
+	fn fmulsu(&mut self) {}
 
-	fn rjmp(&mut self, opcode: u16) {}
+	// Branch Instructions
+
+	fn rjmp(&mut self) {}
 
 	fn ijmp(&mut self) {}
 
-	fn jmp(&mut self, opcode: u16) {}
+	fn jmp(&mut self) {}
 
-	fn rcall(&mut self, opcode: u16) {}
+	fn rcall(&mut self) {}
 
 	fn icall(&mut self) {}
 
-	fn call(&mut self, opcode: u16) {}
+	fn call(&mut self) {}
 
 	fn ret(&mut self) {}
 
 	fn reti(&mut self) {}
 
-	fn cpse(&mut self, opcode: u16) {}
+	fn cpse(&mut self) {}
 
-	fn cp(&mut self, opcode: u16) {}
+	fn cp(&mut self) {}
 
-	fn cpc(&mut self, opcode: u16) {}
+	fn cpc(&mut self) {}
 
-	fn cpi(&mut self, opcode: u16) {}
+	fn cpi(&mut self) {}
 
-	fn sbrc(&mut self, opcode: u16) {}
+	fn sbrc(&mut self) {}
 
-	fn sbrs(&mut self, opcode: u16) {}
+	fn sbrs(&mut self) {}
 
-	fn sbic(&mut self, opcode: u16) {}
+	fn sbic(&mut self) {}
 
-	fn sbis(&mut self, opcode: u16) {}
+	fn sbis(&mut self) {}
 
-	fn brbs(&mut self, opcode: u16) {}
+	fn brbs(&mut self) {}
 
-	fn brbc(&mut self, opcode: u16) {}
+	fn brbc(&mut self) {}
 
-	fn breq(&mut self, opcode: u16) {}
+	fn breq(&mut self) {}
 
-	fn brne(&mut self, opcode: u16) {}
+	fn brne(&mut self) {}
 
-	fn brcs(&mut self, opcode: u16) {}
+	fn brcs(&mut self) {}
 
-	fn brcc(&mut self, opcode: u16) {}
+	fn brcc(&mut self) {}
 
-	fn brsh(&mut self, opcode: u16) {}
+	fn brsh(&mut self) {}
 
-	fn brlo(&mut self, opcode: u16) {}
+	fn brlo(&mut self) {}
 
-	fn brmi(&mut self, opcode: u16) {}
+	fn brmi(&mut self) {}
 
-	fn brpl(&mut self, opcode: u16) {}
+	fn brpl(&mut self) {}
 
-	fn brge(&mut self, opcode: u16) {}
+	fn brge(&mut self) {}
 
-	fn brlt(&mut self, opcode: u16) {}
+	fn brlt(&mut self) {}
 
-	fn brhs(&mut self, opcode: u16) {}
+	fn brhs(&mut self) {}
 
-	fn brhc(&mut self, opcode: u16) {}
+	fn brhc(&mut self) {}
 
-	fn brts(&mut self, opcode: u16) {}
+	fn brts(&mut self) {}
 
-	fn brtc(&mut self, opcode: u16) {}
+	fn brtc(&mut self) {}
 
-	fn brvs(&mut self, opcode: u16) {}
+	fn brvs(&mut self) {}
 
-	fn brvc(&mut self, opcode: u16) {}
+	fn brvc(&mut self) {}
 
-	fn brie(&mut self, opcode: u16) {}
+	fn brie(&mut self) {}
 
-	fn brid(&mut self, opcode: u16) {}
+	fn brid(&mut self) {}
 
-	fn sbi(&mut self, opcode: u16) {}
+	// Bit and Bit-Test Instructions
 
-	fn cbi(&mut self, opcode: u16) {}
+	fn sbi(&mut self) {}
 
-	fn lsl(&mut self, opcode: u16) {}
+	fn cbi(&mut self) {}
 
-	fn lsr(&mut self, opcode: u16) {}
+	fn lsl(&mut self) {}
 
-	fn rol(&mut self, opcode: u16) {}
+	fn lsr(&mut self) {}
 
-	fn ror(&mut self, opcode: u16) {}
+	fn rol(&mut self) {}
 
-	fn asr(&mut self, opcode: u16) {}
+	fn ror(&mut self) {}
 
-	fn swap(&mut self, opcode: u16) {}
+	fn asr(&mut self) {}
 
-	fn bset(&mut self, opcode: u16) {}
+	fn swap(&mut self) {}
 
-	fn bclr(&mut self, opcode: u16) {}
+	fn bset(&mut self) {}
 
-	fn bst(&mut self, opcode: u16) {}
+	fn bclr(&mut self) {}
 
-	fn bld(&mut self, opcode: u16) {}
+	fn bst(&mut self) {}
+
+	fn bld(&mut self) {}
 
 	fn sec(&mut self) {}
 
@@ -384,82 +523,93 @@ impl Cpu {
 
 	fn clh(&mut self) {}
 
-	fn mov(&mut self, opcode: u16) {}
+	// Data Transfer Instructions
 
-	fn movw(&mut self, opcode: u16) {}
+	fn mov(&mut self) {}
 
-	fn ldi(&mut self, opcode: u16) {}
+	fn movw(&mut self) {}
 
-	fn ld(&mut self, opcode: u16) {}
+	fn ldi(&mut self) {}
 
-	fn ldd(&mut self, opcode: u16) {}
+	fn ld(&mut self) {}
 
-	fn lds(&mut self, opcode: u16) {}
+	fn ldd(&mut self) {}
 
-	fn st(&mut self, opcode: u16) {}
+	fn lds(&mut self) {}
 
-	fn std(&mut self, opcode: u16) {}
+	fn st(&mut self) {}
 
-	fn sts(&mut self, opcode: u16) {}
+	fn std(&mut self) {}
+
+	fn sts(&mut self) {}
 
 	fn lpm(&mut self) {}
 
 	fn spm(&mut self) {}
 
-	fn in_(&mut self, opcode: u16) {}
+	fn in_(&mut self) {}
 
-	fn out(&mut self, opcode: u16) {}
+	fn out(&mut self) {}
 
-	fn push(&mut self, opcode: u16) {}
+	fn push(&mut self) {}
 
-	fn pop(&mut self, opcode: u16) {}
+	fn pop(&mut self) {}
+
+	// MCU Control Instructions
 
 	fn nop(&mut self) {
 		self.cycles += 1;
+		self.pc += 1;
 	}
 
-	fn sleep(&mut self) {}
+	fn sleep(&mut self) {
+		self.cycles += 1;
+		self.pc += 1;
+	}
 
-	fn wdr(&mut self) {}
+	fn wdr(&mut self) {
+		self.cycles += 1;
+		self.pc += 1;
+	}
 
 	fn break_(&mut self) {}
 
 	pub fn step(&mut self) {
-		let opcode = self.system.program_memory.read(self.pc);
+		self.opcode = self.system.program_memory.read(self.pc);
 
-		match opcode {
-			0x0000..=0x00FF => match (opcode & 0xFF) as u8 {
+		match self.opcode {
+			0x0000..=0x00FF => match (self.opcode & 0xFF) as u8 {
 				0x00 => self.nop(),
-				_ => panic!("Reserved opcode: {:x?}", opcode),
+				_ => panic!("Reserved opcode: {:x?}", self.opcode),
 			},
-			0x0100..=0x01FF => self.movw(opcode),
-			0x0200..=0x02FF => self.muls(opcode),
+			0x0100..=0x01FF => self.movw(),
+			0x0200..=0x02FF => self.muls(),
 			// mulsu, fmul, fmuls, fmulsu
 			0x0300..=0x03FF => {}
-			0x0400..=0x07FF => self.cpc(opcode),
-			0x0800..=0x0BFF => self.sbc(opcode),
-			0x0C00..=0x0FFF => self.add(opcode),
-			0x1000..=0x13FF => self.cpse(opcode),
-			0x1400..=0x17FF => self.cp(opcode),
-			0x1800..=0x1BFF => self.sub(opcode),
-			0x1C00..=0x1FFF => self.adc(opcode),
-			0x2000..=0x23FF => self.and(opcode),
-			0x2400..=0x27FF => self.eor(opcode),
-			0x2800..=0x2BFF => self.or(opcode),
-			0x2C00..=0x2FFF => self.mov(opcode),
-			0x3000..=0x3FFF => self.cpi(opcode),
-			0x4000..=0x4FFF => self.sbci(opcode),
-			0x5000..=0x5FFF => self.subi(opcode),
-			0x6000..=0x6FFF => self.ori(opcode),
-			0x7000..=0x7FFF => self.andi(opcode),
-			0x8000..=0x81FF => self.ldd(opcode),
-			0x8200..=0x83FF => self.std(opcode),
-			0x8400..=0x85FF => self.ldd(opcode),
-			0x8600..=0x87FF => self.std(opcode),
-			0x8800..=0x89FF => self.ldd(opcode),
-			0x8A00..=0x8BFF => self.std(opcode),
-			0x8C00..=0x8DFF => self.ldd(opcode),
-			0x8E00..=0x8FFF => self.std(opcode),
+			0x0400..=0x07FF => self.cpc(),
+			0x0800..=0x0BFF => self.sbc(),
+			0x0C00..=0x0FFF => self.add(),
+			0x1000..=0x13FF => self.cpse(),
+			0x1400..=0x17FF => self.cp(),
+			0x1800..=0x1BFF => self.sub(),
+			0x1C00..=0x1FFF => self.adc(),
+			0x2000..=0x23FF => self.and(),
+			0x2400..=0x27FF => self.eor(),
+			0x2800..=0x2BFF => self.or(),
+			0x2C00..=0x2FFF => self.mov(),
+			0x3000..=0x3FFF => self.cpi(),
+			0x4000..=0x4FFF => self.sbci(),
+			0x5000..=0x5FFF => self.subi(),
+			0x6000..=0x6FFF => self.ori(),
+			0x7000..=0x7FFF => self.andi(),
+			0x8000..=0x81FF => self.ldd(),
+			0x8200..=0x83FF => self.std(),
+			0x8400..=0x85FF => self.ldd(),
+			0x8600..=0x87FF => self.std(),
+			0x8800..=0x89FF => self.ldd(),
+			0x8A00..=0x8BFF => self.std(),
+			0x8C00..=0x8DFF => self.ldd(),
+			0x8E00..=0x8FFF => self.std(),
 			// lds, ld, lpm, elpm, pop
 			0x9000..=0x91FF => {
 				//
@@ -477,26 +627,26 @@ impl Cpu {
 			0x9500..=0x95FF => {
 				//
 			}
-			0x9600..=0x96FF => self.adiw(opcode),
-			0x9700..=0x97FF => self.sbiw(opcode),
-			0x9800..=0x98FF => self.cbi(opcode),
-			0x9900..=0x99FF => self.sbic(opcode),
-			0x9A00..=0x9AFF => self.sbi(opcode),
-			0x9B00..=0x9BFF => self.sbis(opcode),
-			0x9C00..=0x9FFF => self.mul(opcode),
-			0xA000..=0xA1FF => self.ldd(opcode),
-			0xA200..=0xA3FF => self.std(opcode),
-			0xA400..=0xA5FF => self.ldd(opcode),
-			0xA600..=0xA7FF => self.std(opcode),
-			0xA800..=0xA9FF => self.ldd(opcode),
-			0xAA00..=0xABFF => self.std(opcode),
-			0xAC00..=0xADFF => self.ldd(opcode),
-			0xAE00..=0xAFFF => self.std(opcode),
-			0xB000..=0xB7FF => self.in_(opcode),
-			0xB800..=0xBFFF => self.out(opcode),
-			0xC000..=0xCFFF => self.rjmp(opcode),
-			0xD000..=0xDFFF => self.rcall(opcode),
-			0xE000..=0xEFFF => self.ldi(opcode),
+			0x9600..=0x96FF => self.adiw(),
+			0x9700..=0x97FF => self.sbiw(),
+			0x9800..=0x98FF => self.cbi(),
+			0x9900..=0x99FF => self.sbic(),
+			0x9A00..=0x9AFF => self.sbi(),
+			0x9B00..=0x9BFF => self.sbis(),
+			0x9C00..=0x9FFF => self.mul(),
+			0xA000..=0xA1FF => self.ldd(),
+			0xA200..=0xA3FF => self.std(),
+			0xA400..=0xA5FF => self.ldd(),
+			0xA600..=0xA7FF => self.std(),
+			0xA800..=0xA9FF => self.ldd(),
+			0xAA00..=0xABFF => self.std(),
+			0xAC00..=0xADFF => self.ldd(),
+			0xAE00..=0xAFFF => self.std(),
+			0xB000..=0xB7FF => self.in_(),
+			0xB800..=0xBFFF => self.out(),
+			0xC000..=0xCFFF => self.rjmp(),
+			0xD000..=0xDFFF => self.rcall(),
+			0xE000..=0xEFFF => self.ldi(),
 			// brcs, breq, brhs, brie, brlt, brmi, brts, brvs
 			0xF000..=0xF3FF => {
 				//
@@ -505,10 +655,10 @@ impl Cpu {
 			0xF400..=0xF7FF => {
 				//
 			}
-			0xF800..=0xF9FF => self.bld(opcode),
-			0xFA00..=0xFBFF => self.bst(opcode),
-			0xFC00..=0xFDFF => self.sbrc(opcode),
-			0xFE00..=0xFFFF => self.sbrs(opcode),
+			0xF800..=0xF9FF => self.bld(),
+			0xFA00..=0xFBFF => self.bst(),
+			0xFC00..=0xFDFF => self.sbrc(),
+			0xFE00..=0xFFFF => self.sbrs(),
 		}
 	}
 }

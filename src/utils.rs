@@ -43,7 +43,7 @@ pub fn bit(value: u8, bit: u8) -> u8 {
 	value & (1 << bit)
 }
 
-pub fn all_bits_u8(value: u8) -> EightBits {
+pub fn bits_u8(value: u8) -> EightBits {
 	(
 		value & (1 << 0),
 		value & (1 << 1),
@@ -56,7 +56,7 @@ pub fn all_bits_u8(value: u8) -> EightBits {
 	)
 }
 
-pub fn all_bits_u16(value: u16) -> SixteenBits {
+pub fn bits_u16(value: u16) -> SixteenBits {
 	(
 		(value & (1 << 0)) as u8,
 		(value & (1 << 1)) as u8,
