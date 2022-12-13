@@ -110,26 +110,6 @@ mod instructions {
 	}
 
 	#[test]
-	fn and() {
-		let mut cpu = Cpu::init();
-		let prg: [u16; 2] = [0x2000, 0x2038];
-
-		for (index, word) in prg.into_iter().enumerate() {
-			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
-		}
-
-		cpu.sram.registers[0] = 0;
-		cpu.sram.registers[3] = 67;
-		cpu.sram.registers[8] = 13;
-
-		cpu.step();
-		cpu.step();
-
-		assert_eq!(cpu.sram.registers[0], 0);
-		assert_eq!(cpu.sram.registers[3], 1);
-	}
-
-	#[test]
 	fn sub() {
 		let mut cpu = Cpu::init();
 		let prg: [u16; 4] = [0x1847, 0x198C, 0x1AB3, 0x1B02];
@@ -215,5 +195,132 @@ mod instructions {
 		cpu.step();
 
 		assert_eq!(cpu.sram.registers[20], 45);
+	}
+
+	#[test]
+	fn sbiw() {
+		let mut cpu = Cpu::init();
+		let prg: [u16; 1] = [0x9760];
+
+		for (index, word) in prg.into_iter().enumerate() {
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
+		}
+
+		cpu.sram.registers[28] = 0xAA;
+		cpu.sram.registers[29] = 0x55;
+
+		cpu.step();
+
+		assert_eq!(cpu.sram.registers[28], 0x9A);
+		assert_eq!(cpu.sram.registers[29], 0x55);
+	}
+
+	#[test]
+	fn and() {
+		let mut cpu = Cpu::init();
+		let prg: [u16; 2] = [0x2000, 0x2038];
+
+		for (index, word) in prg.into_iter().enumerate() {
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
+		}
+
+		cpu.sram.registers[0] = 0;
+		cpu.sram.registers[3] = 67;
+		cpu.sram.registers[8] = 13;
+
+		cpu.step();
+		cpu.step();
+
+		assert_eq!(cpu.sram.registers[0], 0);
+		assert_eq!(cpu.sram.registers[3], 1);
+	}
+
+	#[test]
+	fn andi() {
+		let mut cpu = Cpu::init();
+		let prg: [u16; 1] = [0x7227];
+
+		for (index, word) in prg.into_iter().enumerate() {
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
+		}
+
+		cpu.sram.registers[18] = 30;
+		cpu.step();
+
+		assert_eq!(cpu.sram.registers[18], 6);
+	}
+
+	#[test]
+	fn or() {
+		let mut cpu = Cpu::init();
+		let prg: [u16; 2] = [0x2800, 0x2935];
+
+		for (index, word) in prg.into_iter().enumerate() {
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
+		}
+
+		cpu.sram.registers[0] = 72;
+		cpu.sram.registers[5] = 5;
+		cpu.sram.registers[19] = 3;
+
+		cpu.step();
+		cpu.step();
+
+		assert_eq!(cpu.sram.registers[0], 72);
+		assert_eq!(cpu.sram.registers[19], 7);
+	}
+
+	#[test]
+	fn ori() {
+		let mut cpu = Cpu::init();
+		let prg: [u16; 1] = [0x614C];
+
+		for (index, word) in prg.into_iter().enumerate() {
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
+		}
+
+		cpu.sram.registers[20] = 84;
+		cpu.step();
+
+		assert_eq!(cpu.sram.registers[20], 92);
+	}
+
+	#[test]
+	fn eor() {
+		let mut cpu = Cpu::init();
+		let prg: [u16; 2] = [0x2700, 0x256A];
+
+		for (index, word) in prg.into_iter().enumerate() {
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
+		}
+
+		cpu.sram.registers[16] = 39;
+		cpu.sram.registers[10] = 17;
+		cpu.sram.registers[22] = 98;
+
+		cpu.step();
+		cpu.step();
+
+		assert_eq!(cpu.sram.registers[16], 0);
+		assert_eq!(cpu.sram.registers[22], 115);
+	}
+
+	#[test]
+	fn com() {
+		let mut cpu = Cpu::init();
+		let prg: [u16; 2] = [0x94B0, 0x9540];
+
+		for (index, word) in prg.into_iter().enumerate() {
+			cpu.system.program_memory.app_flash.data[0x0000 + index] = word;
+		}
+
+		cpu.sram.registers[11] = 14;
+		cpu.sram.registers[20] = 99;
+
+		cpu.step();
+		cpu.step();
+
+		assert_eq!(cpu.sram.registers[11], 241);
+		assert_eq!(cpu.sram.registers[20], 156);
 	}
 }

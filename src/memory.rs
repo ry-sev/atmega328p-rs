@@ -189,7 +189,7 @@ impl Memory for Sram {
 		}
 	}
 
-	fn write(&mut self, address: u16, data: u16) {
+	fn write(&mut self, _address: u16, _data: u16) {
 		todo!();
 	}
 }

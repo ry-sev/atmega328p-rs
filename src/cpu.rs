@@ -23,6 +23,7 @@ pub struct Sreg {
 	pub I: bool,
 }
 
+#[allow(dead_code)]
 impl Sreg {
 	pub fn byte(&self) -> u8 {
 		(self.C as u8)
@@ -170,12 +171,8 @@ impl Cpu {
 		let rd = (rd_high << 8) | rd_low;
 
 		let result = rd + k;
-
 		let result_low = (result & 0xFF) as u8;
 		let result_high = ((result >> 8) & 0xFF) as u8;
-
-		self.sram.registers[d as usize] = result_low;
-		self.sram.registers[(d + 1) as usize] = result_high;
 
 		let r_bits = bits_u16(result);
 		let rdh_bits = bits_u8(result_high);
@@ -185,6 +182,9 @@ impl Cpu {
 		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
 		self.status.Z = result == 0;
 		self.status.C = !r_bits.15 & rdh_bits.7 == 1;
+
+		self.sram.registers[d as usize] = result_low;
+		self.sram.registers[(d + 1) as usize] = result_high;
 
 		self.pc += 1;
 		self.cycles += 2;
@@ -320,7 +320,39 @@ impl Cpu {
 		self.cycles += 1;
 	}
 
-	fn sbiw(&mut self) {}
+	fn sbiw(&mut self) {
+		// 1001 0111 KKdd KKKK
+
+		let mut k = self.opcode & 0xF;
+		k |= (self.opcode & (1 << 6)) >> 2;
+		k |= (self.opcode & (1 << 7)) >> 2;
+
+		let d = (((self.opcode >> 4 & 0xF) & 0x3) * 2 + 24) as u8;
+
+		let rd_low = self.sram.registers[d as usize] as u16;
+		let rd_high = self.sram.registers[(d + 1) as usize] as u16;
+		let rd = (rd_high << 8) | rd_low;
+
+		let result = rd - k;
+		let result_low = (result & 0xFF) as u8;
+		let result_high = ((result >> 8) & 0xFF) as u8;
+
+		let r_bits = bits_u16(result);
+		let rdh_bits = bits_u8(result_high);
+
+		// set flags
+		self.status.V = r_bits.15 & !rdh_bits.7 == 1;
+		self.status.N = r_bits.15 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+		self.status.C = r_bits.15 & !rdh_bits.7 == 1;
+
+		self.sram.registers[d as usize] = result_low;
+		self.sram.registers[(d + 1) as usize] = result_high;
+
+		self.pc += 1;
+		self.cycles += 2;
+	}
 
 	fn and(&mut self) {
 		// 0010 00rd dddd rrrr
@@ -353,15 +385,135 @@ impl Cpu {
 		self.cycles += 1;
 	}
 
-	fn andi(&mut self) {}
+	fn andi(&mut self) {
+		// 0111 KKKK dddd KKKK
 
-	fn or(&mut self) {}
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		rd += 16;
 
-	fn ori(&mut self) {}
+		let k = ((((self.opcode >> 8) & 0xF) << 4) | (self.opcode & 0xF)) as u8;
+		let result = self.sram.registers[rd as usize] & k;
 
-	fn eor(&mut self) {}
+		let r_bits = bits_u8(result);
 
-	fn com(&mut self) {}
+		self.status.V = false;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn or(&mut self) {
+		// 0010 10rd dddd rrr
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		let mut rr = (self.opcode & 0xF) as u8;
+
+		match high_byte(self.opcode) {
+			0x29 => rd += 16,
+			0x2A => rr += 16,
+			0x2B => {
+				rd += 16;
+				rr += 16;
+			}
+			_ => {}
+		}
+
+		let result = self.sram.registers[rd as usize] | self.sram.registers[rr as usize];
+
+		let r_bits = bits_u8(result);
+
+		self.status.V = false;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn ori(&mut self) {
+		// 0110 KKKK dddd KKKK
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		rd += 16;
+
+		let k = ((((self.opcode >> 8) & 0xF) << 4) | (self.opcode & 0xF)) as u8;
+		let result = self.sram.registers[rd as usize] | k;
+
+		let r_bits = bits_u8(result);
+
+		self.status.V = false;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn eor(&mut self) {
+		// 0010 01rd dddd rrrr
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		let mut rr = (self.opcode & 0xF) as u8;
+
+		match high_byte(self.opcode) {
+			0x25 => rd += 16,
+			0x26 => rr += 16,
+			0x27 => {
+				rd += 16;
+				rr += 16;
+			}
+			_ => {}
+		}
+
+		let result = self.sram.registers[rd as usize] ^ self.sram.registers[rr as usize];
+
+		let r_bits = bits_u8(result);
+
+		self.status.V = false;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn com(&mut self) {
+		// 1001 010d dddd 0000
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+
+		if high_byte(self.opcode) == 0x95 {
+			rd += 16
+		}
+
+		let result = 0xFF - self.sram.registers[rd as usize];
+		let r_bits = bits_u8(result);
+
+		self.status.V = false;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+		self.status.C = true;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
 	fn neg(&mut self) {}
 
@@ -372,6 +524,8 @@ impl Cpu {
 	fn inc(&mut self) {}
 
 	fn dec(&mut self) {}
+
+	fn des(&mut self) {}
 
 	fn tst(&mut self) {}
 
@@ -531,13 +685,21 @@ impl Cpu {
 
 	fn ldi(&mut self) {}
 
-	fn ld(&mut self) {}
+	fn ld_x(&mut self) {}
+
+	fn ld_y(&mut self) {}
+
+	fn ld_z(&mut self) {}
 
 	fn ldd(&mut self) {}
 
 	fn lds(&mut self) {}
 
-	fn st(&mut self) {}
+	fn st_x(&mut self) {}
+
+	fn st_y(&mut self) {}
+
+	fn st_z(&mut self) {}
 
 	fn std(&mut self) {}
 
@@ -574,18 +736,38 @@ impl Cpu {
 
 	fn break_(&mut self) {}
 
+	fn reserved(&mut self) {
+		println!("Reserved opcode: {:x?}", self.opcode);
+		self.cycles += 1;
+		self.pc += 1;
+	}
+
 	pub fn step(&mut self) {
 		self.opcode = self.system.program_memory.read(self.pc);
+
+		let low_byte = (self.opcode & 0xF) as u8;
+		let high_byte = ((self.opcode >> 4) & 0xF) as u8;
 
 		match self.opcode {
 			0x0000..=0x00FF => match (self.opcode & 0xFF) as u8 {
 				0x00 => self.nop(),
-				_ => panic!("Reserved opcode: {:x?}", self.opcode),
+				_ => self.reserved(),
 			},
 			0x0100..=0x01FF => self.movw(),
 			0x0200..=0x02FF => self.muls(),
-			// mulsu, fmul, fmuls, fmulsu
-			0x0300..=0x03FF => {}
+			0x0300..=0x03FF => match low_byte {
+				0x0..=0x7 => match high_byte {
+					0x0..=0x7 => self.mulsu(),
+					0x8..=0xF => self.fmuls(),
+					_ => unreachable!(),
+				},
+				0x8..=0xF => match high_byte {
+					0x0..=0x7 => self.fmul(),
+					0x8..=0xF => self.fmulsu(),
+					_ => unreachable!(),
+				},
+				_ => unreachable!(),
+			},
 			0x0400..=0x07FF => self.cpc(),
 			0x0800..=0x0BFF => self.sbc(),
 			0x0C00..=0x0FFF => self.add(),
@@ -610,23 +792,95 @@ impl Cpu {
 			0x8A00..=0x8BFF => self.std(),
 			0x8C00..=0x8DFF => self.ldd(),
 			0x8E00..=0x8FFF => self.std(),
-			// lds, ld, lpm, elpm, pop
-			0x9000..=0x91FF => {
-				//
-			}
-			// sts, st, push
-			0x9200..=0x93FF => {
-				//
-			}
-			// asr, call, clc, clh, cli, cln, cls, clt, clv, com, dec, des, eijmp, ijmp
-			// inc, jmp, lsr, neg, ror, sec, seh, sei, sen, ses, set, sev, sez, swap
-			0x9400..=0x94FF => {}
-
-			// asr, break, call, com, dec, eicall, elpm, icall, inc, jmp, lpm, lsr, neg
-			// ret, reti, ror, sleep, spm, swap, wdr
-			0x9500..=0x95FF => {
-				//
-			}
+			0x9000..=0x91FF => match low_byte {
+				0x0 => self.lds(),
+				0x1..=0x2 => self.ld_z(),
+				0x3 => self.reserved(),
+				0x4..=0x5 => self.lpm(),
+				0x6..=0x8 => self.reserved(),
+				0x9..=0xA => self.ld_y(),
+				0xB => self.reserved(),
+				0xC..=0xE => self.ld_x(),
+				0xF => self.pop(),
+				_ => unreachable!(),
+			},
+			0x9200..=0x93FF => match low_byte {
+				0x0 => self.sts(),
+				0x1..=0x2 => self.st_z(),
+				0x3..=0x8 => self.reserved(),
+				0x9..=0xA => self.st_y(),
+				0xB => self.reserved(),
+				0xC..=0xE => self.st_x(),
+				0xF => self.push(),
+				_ => unreachable!(),
+			},
+			0x9400..=0x94FF => match low_byte {
+				0x0 => self.com(),
+				0x1 => self.neg(),
+				0x2 => self.swap(),
+				0x3 => self.inc(),
+				0x4 => self.reserved(),
+				0x5 => self.asr(),
+				0x6 => self.lsr(),
+				0x7 => self.ror(),
+				0x8 => match high_byte {
+					0x0 => self.sec(),
+					0x1 => self.sez(),
+					0x2 => self.sen(),
+					0x3 => self.sev(),
+					0x4 => self.ses(),
+					0x5 => self.seh(),
+					0x6 => self.set(),
+					0x7 => self.sei(),
+					0x8 => self.clc(),
+					0x9 => self.clz(),
+					0xA => self.cln(),
+					0xB => self.clv(),
+					0xC => self.cls(),
+					0xD => self.clh(),
+					0xE => self.clt(),
+					0xF => self.cli(),
+					_ => unreachable!(),
+				},
+				0x9 => match high_byte {
+					0x0 => self.ijmp(),
+					_ => self.reserved(),
+				},
+				0xA => self.dec(),
+				0xB => self.des(),
+				0xC..=0xD => self.jmp(),
+				0xE..=0xF => self.call(),
+				_ => unreachable!(),
+			},
+			0x9500..=0x95FF => match low_byte {
+				0x00 => self.com(),
+				0x01 => self.neg(),
+				0x02 => self.swap(),
+				0x03 => self.inc(),
+				0x04 => self.reserved(),
+				0x05 => self.asr(),
+				0x06 => self.lsr(),
+				0x07 => self.ror(),
+				0x08 => match high_byte {
+					0x0 => self.ret(),
+					0x1 => self.reti(),
+					0x8 => self.sleep(),
+					0x9 => self.break_(),
+					0xA => self.wdr(),
+					0xC => self.lpm(),
+					0xE..=0xF => self.spm(),
+					_ => self.reserved(),
+				},
+				0x09 => match high_byte {
+					0x0 => self.icall(),
+					_ => self.reserved(),
+				},
+				0x0A => self.dec(),
+				0x0B => self.reserved(),
+				0xC..=0xD => self.jmp(),
+				0x0E..=0x0F => self.call(),
+				_ => unreachable!(),
+			},
 			0x9600..=0x96FF => self.adiw(),
 			0x9700..=0x97FF => self.sbiw(),
 			0x9800..=0x98FF => self.cbi(),
@@ -647,14 +901,44 @@ impl Cpu {
 			0xC000..=0xCFFF => self.rjmp(),
 			0xD000..=0xDFFF => self.rcall(),
 			0xE000..=0xEFFF => self.ldi(),
-			// brcs, breq, brhs, brie, brlt, brmi, brts, brvs
-			0xF000..=0xF3FF => {
-				//
-			}
-			// brcc, brge, brhc, brid, brne, brpl, brtc, brvc
-			0xF400..=0xF7FF => {
-				//
-			}
+			0xF000..=0xF3FF => match low_byte {
+				0x0 => self.brcs(),
+				0x1 => self.breq(),
+				0x2 => self.brmi(),
+				0x3 => self.brvs(),
+				0x4 => self.brlt(),
+				0x5 => self.brhs(),
+				0x6 => self.brts(),
+				0x7 => self.brie(),
+				0x8 => self.brcs(),
+				0x9 => self.breq(),
+				0xA => self.brmi(),
+				0xB => self.brvs(),
+				0xC => self.brlt(),
+				0xD => self.brhs(),
+				0xE => self.brts(),
+				0xF => self.brie(),
+				_ => unreachable!(),
+			},
+			0xF400..=0xF7FF => match low_byte {
+				0x0 => self.brcc(),
+				0x1 => self.brne(),
+				0x2 => self.brpl(),
+				0x3 => self.brvc(),
+				0x4 => self.brge(),
+				0x5 => self.brhc(),
+				0x6 => self.brtc(),
+				0x7 => self.brid(),
+				0x8 => self.brcc(),
+				0x9 => self.brne(),
+				0xA => self.brpl(),
+				0xB => self.brvc(),
+				0xC => self.brge(),
+				0xD => self.brhc(),
+				0xE => self.brtc(),
+				0xF => self.brid(),
+				_ => unreachable!(),
+			},
 			0xF800..=0xF9FF => self.bld(),
 			0xFA00..=0xFBFF => self.bst(),
 			0xFC00..=0xFDFF => self.sbrc(),
