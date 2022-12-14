@@ -177,11 +177,11 @@ impl Cpu {
 		let r_bits = bits_u16(result);
 		let rdh_bits = bits_u8(result_high);
 
-		self.status.V = !rdh_bits.7 & r_bits.15 == 1;
+		self.status.V = (!rdh_bits.7 & r_bits.15) == 1;
 		self.status.N = r_bits.15 == 1;
 		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
 		self.status.Z = result == 0;
-		self.status.C = !r_bits.15 & rdh_bits.7 == 1;
+		self.status.C = (!r_bits.15 & rdh_bits.7) == 1;
 
 		self.sram.registers[d as usize] = result_low;
 		self.sram.registers[(d + 1) as usize] = result_high;
@@ -206,7 +206,8 @@ impl Cpu {
 			_ => {}
 		}
 
-		let result = self.sram.registers[rd as usize] - self.sram.registers[rr as usize];
+		let result =
+			self.sram.registers[rd as usize].wrapping_sub(self.sram.registers[rr as usize]);
 
 		let r_bits = bits_u8(result);
 		let rd_bits = bits_u8(rd);
@@ -341,7 +342,7 @@ impl Cpu {
 		let rdh_bits = bits_u8(result_high);
 
 		// set flags
-		self.status.V = r_bits.15 & !rdh_bits.7 == 1;
+		self.status.V = (r_bits.15 & !rdh_bits.7) == 1;
 		self.status.N = r_bits.15 == 1;
 		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
 		self.status.Z = result == 0;
@@ -515,23 +516,136 @@ impl Cpu {
 		self.cycles += 1;
 	}
 
-	fn neg(&mut self) {}
+	fn neg(&mut self) {
+		// 1001 010d dddd 0001
 
-	fn sbr(&mut self) {}
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
 
-	fn cbr(&mut self) {}
+		if high_byte(self.opcode) == 0x95 {
+			rd += 16
+		}
 
-	fn inc(&mut self) {}
+		let result = 0x00_u8.wrapping_sub(self.sram.registers[rd as usize]);
+		let r_bits = bits_u8(result);
+		let rd_bits = bits_u8(rd);
 
-	fn dec(&mut self) {}
+		self.status.H = (r_bits.3 | !rd_bits.3) == 1;
+		self.status.V = (r_bits.7
+			& !r_bits.6 & !r_bits.5
+			& !r_bits.4 & !r_bits.3
+			& !r_bits.2 & !r_bits.1
+			& !r_bits.0) == 1;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = result == 0;
+		self.status.C =
+			(r_bits.7 | r_bits.6 | r_bits.5 | r_bits.4 | r_bits.3 | r_bits.2 | r_bits.1 | r_bits.0)
+				== 1;
 
-	fn des(&mut self) {}
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	#[allow(dead_code)]
+	fn sbr(&mut self) {
+		// sbr is the same as ori
+		// sbr r16, 0xFF -> ori r16, 0xFF
+	}
+
+	#[allow(dead_code)]
+	fn cbr(&mut self) {
+		// cbr is the same as andi but first negates the constant K
+	}
+
+	fn inc(&mut self) {
+		// 1001 010d dddd 0011
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+
+		if high_byte(self.opcode) == 0x95 {
+			rd += 16
+		}
+
+		let result = self.sram.registers[rd as usize] + 1;
+		let r_bits = bits_u8(result);
+
+		self.status.V = (r_bits.7
+			& !r_bits.6 & !r_bits.5
+			& !r_bits.4 & !r_bits.3
+			& !r_bits.2 & !r_bits.1
+			& !r_bits.0) == 1;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = (!r_bits.7
+			& !r_bits.6 & !r_bits.5
+			& !r_bits.4 & !r_bits.3
+			& !r_bits.2 & !r_bits.1
+			& !r_bits.0) == 1;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn dec(&mut self) {
+		// 1001 010d dddd 1010
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+
+		if high_byte(self.opcode) == 0x95 {
+			rd += 16
+		}
+
+		let result = self.sram.registers[rd as usize].wrapping_sub(0x01);
+		let r_bits = bits_u8(result);
+
+		self.status.V = (!r_bits.7
+			& r_bits.6 & r_bits.5
+			& r_bits.4 & r_bits.3
+			& r_bits.2 & r_bits.1
+			& r_bits.0) == 1;
+		self.status.N = r_bits.7 == 1;
+		self.status.S = ((self.status.N as u8) ^ (self.status.V as u8)) == 1;
+		self.status.Z = (!r_bits.7
+			& !r_bits.6 & !r_bits.5
+			& !r_bits.4 & !r_bits.3
+			& !r_bits.2 & !r_bits.1
+			& !r_bits.0) == 1;
+
+		self.sram.registers[rd as usize] = result;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn des(&mut self) {
+		// 1001 0100 KKKK 1011
+
+		let _k = ((self.opcode & 0xF0) >> 4) as u8;
+
+		// if the DES instruction is succeeding a non-DES instruction, an extra cycle is inserted.
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
 	fn tst(&mut self) {}
 
-	fn clr(&mut self) {}
+	#[allow(dead_code)]
+	fn clr(&mut self) {
+		// clr is the same as eor with the same register
+		// as the source and destination
+		// clr r16 -> eor r16, r16
+	}
 
-	fn ser(&mut self) {}
+	#[allow(dead_code)]
+	fn ser(&mut self) {
+		// ser is the same as ldi with 0xFF as the constant K
+		// ser r16 -> ldi r16, 0xFF
+	}
 
 	fn mul(&mut self) {}
 
@@ -645,37 +759,101 @@ impl Cpu {
 
 	fn bld(&mut self) {}
 
-	fn sec(&mut self) {}
+	fn sec(&mut self) {
+		self.status.C = true;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn clc(&mut self) {}
+	fn clc(&mut self) {
+		self.status.C = false;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn sen(&mut self) {}
+	fn sen(&mut self) {
+		self.status.N = true;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn cln(&mut self) {}
+	fn cln(&mut self) {
+		self.status.N = false;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn sez(&mut self) {}
+	fn sez(&mut self) {
+		self.status.Z = true;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn clz(&mut self) {}
+	fn clz(&mut self) {
+		self.status.Z = false;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn sei(&mut self) {}
+	fn sei(&mut self) {
+		self.status.I = true;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn cli(&mut self) {}
+	fn cli(&mut self) {
+		self.status.I = false;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn ses(&mut self) {}
+	fn ses(&mut self) {
+		self.status.S = true;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn cls(&mut self) {}
+	fn cls(&mut self) {
+		self.status.S = false;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn sev(&mut self) {}
+	fn sev(&mut self) {
+		self.status.V = true;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn clv(&mut self) {}
+	fn clv(&mut self) {
+		self.status.V = false;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn set(&mut self) {}
+	fn set(&mut self) {
+		self.status.T = true;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn clt(&mut self) {}
+	fn clt(&mut self) {
+		self.status.T = false;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn seh(&mut self) {}
+	fn seh(&mut self) {
+		self.status.H = true;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
-	fn clh(&mut self) {}
+	fn clh(&mut self) {
+		self.status.H = false;
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
 	// Data Transfer Instructions
 
