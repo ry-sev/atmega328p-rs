@@ -632,7 +632,12 @@ impl Cpu {
 		self.cycles += 1;
 	}
 
-	fn tst(&mut self) {}
+	#[allow(dead_code)]
+	fn tst(&mut self) {
+		// tst is the same as and with the same register
+		// as the source and destination
+		// tst r0 -> and r0, r0
+	}
 
 	#[allow(dead_code)]
 	fn clr(&mut self) {
