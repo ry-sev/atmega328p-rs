@@ -849,17 +849,14 @@ impl Cpu {
 
 	#[allow(dead_code)]
 	fn lsl(&mut self) {
-		// lsl r0 -> add r0, r0
-		// lsl r1 -> add r1, r1
-		// lsl r5 -> add r5, r5
+		// lsl rd -> add rd, rd
 	}
 
 	fn lsr(&mut self) {}
 
 	#[allow(dead_code)]
 	fn rol(&mut self) {
-		// rol r0 -> adc r0, r0
-		// rol r5 -> adc r5, r5
+		// rol rd -> adc rd, rd
 	}
 
 	fn ror(&mut self) {}
