@@ -652,11 +652,88 @@ impl Cpu {
 		// ser r16 -> ldi r16, 0xFF
 	}
 
-	fn mul(&mut self) {}
+	fn mul(&mut self) {
+		// 1001 11rd dddd rrrr
 
-	fn muls(&mut self) {}
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		let mut rr = (self.opcode & 0xF) as u8;
 
-	fn mulsu(&mut self) {}
+		match high_byte(self.opcode) {
+			0x9D => rd += 16,
+			0x9E => rr += 16,
+			0x9F => {
+				rd += 16;
+				rr += 16;
+			}
+			_ => {}
+		}
+
+		let result =
+			(self.sram.registers[rd as usize] as u16) * (self.sram.registers[rr as usize] as u16);
+
+		let result_low = (result & 0xFF) as u8;
+		let result_high = ((result >> 8) & 0xFF) as u8;
+
+		let r_bits = bits_u16(result);
+
+		self.status.C = r_bits.15 == 1;
+		self.status.Z = result == 1;
+
+		self.sram.registers[0] = result_low;
+		self.sram.registers[1] = result_high;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn muls(&mut self) {
+		// 0000 0010 dddd rrrr
+
+		let rd = (((self.opcode & 0xF0) >> 4) as u8) + 16;
+		let rr = ((self.opcode & 0xF) as u8) + 16;
+
+		let result = (self.sram.registers[rd as usize].wrapping_neg() as u16)
+			* (self.sram.registers[rr as usize].wrapping_neg() as u16);
+
+		let result_low = (result & 0xFF) as u8;
+		let result_high = ((result >> 8) & 0xFF) as u8;
+
+		let r_bits = bits_u16(result);
+
+		self.status.C = r_bits.15 == 1;
+		self.status.Z = result == 1;
+
+		self.sram.registers[0] = result_low;
+		self.sram.registers[1] = result_high;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
+
+	fn mulsu(&mut self) {
+		// 0000 0011 0ddd 0rrr
+
+		let rd = (((self.opcode & 0x70) >> 4) as u8) + 16;
+		let rr = ((self.opcode & 0x7) as u8) + 16;
+
+		let result = (self.sram.registers[rd as usize] as u16)
+			.wrapping_neg()
+			.wrapping_mul(self.sram.registers[rr as usize] as u16);
+
+		let result_low = (result & 0xFF) as u8;
+		let result_high = ((result >> 8) & 0xFF) as u8;
+
+		let r_bits = bits_u16(result);
+
+		self.status.C = r_bits.15 == 1;
+		self.status.Z = result == 1;
+
+		self.sram.registers[0] = result_low;
+		self.sram.registers[1] = result_high;
+
+		self.pc += 1;
+		self.cycles += 1;
+	}
 
 	fn fmul(&mut self) {}
 

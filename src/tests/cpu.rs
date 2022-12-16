@@ -325,24 +325,6 @@ mod instructions {
 	}
 
 	#[test]
-	fn sbr() {
-		let mut cpu = Cpu::init();
-		cpu.system.program_memory.app_flash.data[0x0000] = 0x614C;
-		cpu.sram.registers[20] = 84;
-		cpu.step();
-		assert_eq!(cpu.sram.registers[20], 92);
-	}
-
-	#[test]
-	fn cbr() {
-		let mut cpu = Cpu::init();
-		cpu.system.program_memory.app_flash.data[0x0000] = 0x7227;
-		cpu.sram.registers[18] = 30;
-		cpu.step();
-		assert_eq!(cpu.sram.registers[18], 6);
-	}
-
-	#[test]
 	fn inc() {
 		let mut cpu = Cpu::init();
 		cpu.system.program_memory.app_flash.data[0x0000] = 0x9493;
@@ -358,5 +340,37 @@ mod instructions {
 		cpu.sram.registers[23] = 1;
 		cpu.step();
 		assert_eq!(cpu.sram.registers[23], 0);
+	}
+
+	#[test]
+	fn mul() {
+		let mut cpu = Cpu::init();
+		cpu.system.program_memory.app_flash.data[0x0000] = 0x9C00;
+		cpu.sram.registers[0] = 255;
+		cpu.step();
+		assert_eq!(cpu.sram.registers[0], 0x01);
+		assert_eq!(cpu.sram.registers[1], 0xFE);
+	}
+
+	#[test]
+	fn muls() {
+		let mut cpu = Cpu::init();
+		cpu.system.program_memory.app_flash.data[0x0000] = 0x0218;
+		cpu.sram.registers[17] = 242;
+		cpu.sram.registers[24] = 223;
+		cpu.step();
+		assert_eq!(cpu.sram.registers[0], 0xCE);
+		assert_eq!(cpu.sram.registers[1], 0x01);
+	}
+
+	#[test]
+	fn mulsu() {
+		let mut cpu = Cpu::init();
+		cpu.system.program_memory.app_flash.data[0x0000] = 0x0324;
+		cpu.sram.registers[18] = 128;
+		cpu.sram.registers[20] = 192;
+		cpu.step();
+		assert_eq!(cpu.sram.registers[0], 0x00);
+		assert_eq!(cpu.sram.registers[1], 0xA0);
 	}
 }
