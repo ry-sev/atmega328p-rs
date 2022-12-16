@@ -775,9 +775,29 @@ impl Cpu {
 
 	fn sbis(&mut self) {}
 
-	fn brbs(&mut self) {}
+	#[allow(dead_code)]
+	fn brbs(&mut self) {
+		// brbs 0, <label> -> brcs <address>
+		// brbs 1, <label> -> breq <address>
+		// brbs 2, <label> -> brmi <address>
+		// brbs 3, <label> -> brvs <address>
+		// brbs 4, <label> -> brlt <address>
+		// brbs 5, <label> -> brhs <address>
+		// brbs 6, <label> -> brts <address>
+		// brbs 7, <label> -> brie <address>
+	}
 
-	fn brbc(&mut self) {}
+	#[allow(dead_code)]
+	fn brbc(&mut self) {
+		// brbc 0, <label> -> brcc <address>
+		// brbc 1, <label> -> brne <address>
+		// brbc 2, <label> -> brpl <address>
+		// brbc 3, <label> -> brvc <address>
+		// brbc 4, <label> -> brge <address>
+		// brbc 5, <label> -> brhc <address>
+		// brbc 6, <label> -> brtc <address>
+		// brbc 7, <label> -> brid <address>
+	}
 
 	fn breq(&mut self) {}
 
@@ -787,9 +807,15 @@ impl Cpu {
 
 	fn brcc(&mut self) {}
 
-	fn brsh(&mut self) {}
+	#[allow(dead_code)]
+	fn brsh(&mut self) {
+		// brsh <label> -> brcc <address>
+	}
 
-	fn brlo(&mut self) {}
+	#[allow(dead_code)]
+	fn brlo(&mut self) {
+		// brlo <label> -> brbs 0, <label> -> brcs <address>
+	}
 
 	fn brmi(&mut self) {}
 
@@ -821,11 +847,20 @@ impl Cpu {
 
 	fn cbi(&mut self) {}
 
-	fn lsl(&mut self) {}
+	#[allow(dead_code)]
+	fn lsl(&mut self) {
+		// lsl r0 -> add r0, r0
+		// lsl r1 -> add r1, r1
+		// lsl r5 -> add r5, r5
+	}
 
 	fn lsr(&mut self) {}
 
-	fn rol(&mut self) {}
+	#[allow(dead_code)]
+	fn rol(&mut self) {
+		// rol r0 -> adc r0, r0
+		// rol r5 -> adc r5, r5
+	}
 
 	fn ror(&mut self) {}
 
@@ -833,9 +868,29 @@ impl Cpu {
 
 	fn swap(&mut self) {}
 
-	fn bset(&mut self) {}
+	#[allow(dead_code)]
+	fn bset(&mut self) {
+		// bset 0 -> sec
+		// bset 1 -> sez
+		// bset 2 -> sen
+		// bset 3 -> sev
+		// bset 4 -> ses
+		// bset 5 -> seh
+		// bset 6 -> set
+		// bset 7 -> sei
+	}
 
-	fn bclr(&mut self) {}
+	#[allow(dead_code)]
+	fn bclr(&mut self) {
+		// bclr 0 -> clc
+		// bclr 1 -> clz
+		// bclr 2 -> cln
+		// bclr 3 -> clv
+		// bclr 4 -> cls
+		// bclr 5 -> clh
+		// bclr 6 -> clt
+		// bclr 7 -> cli
+	}
 
 	fn bst(&mut self) {}
 
