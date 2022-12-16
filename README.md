@@ -3,3 +3,9 @@
 An ATmega328P emulator in Rust. This is work in progress so it is not functional yet.
 
 ![screenshot](./res/screenshot.png)
+
+# Build Instructions
+
+```
+cargo run --release
+```
