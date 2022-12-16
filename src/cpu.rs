@@ -634,22 +634,17 @@ impl Cpu {
 
 	#[allow(dead_code)]
 	fn tst(&mut self) {
-		// tst is the same as and with the same register
-		// as the source and destination
-		// tst r0 -> and r0, r0
+		// tst rd -> and rd, rd
 	}
 
 	#[allow(dead_code)]
 	fn clr(&mut self) {
-		// clr is the same as eor with the same register
-		// as the source and destination
-		// clr r16 -> eor r16, r16
+		// clr rd -> eor rd, rd
 	}
 
 	#[allow(dead_code)]
 	fn ser(&mut self) {
-		// ser is the same as ldi with 0xFF as the constant K
-		// ser r16 -> ldi r16, 0xFF
+		// ser rd -> ldi rd, 0xFF
 	}
 
 	fn mul(&mut self) {
