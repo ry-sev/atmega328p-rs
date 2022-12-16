@@ -568,7 +568,7 @@ impl Cpu {
 			rd += 16
 		}
 
-		let result = self.sram.registers[rd as usize] + 1;
+		let result = self.sram.registers[rd as usize].wrapping_add(1);
 		let r_bits = bits_u8(result);
 
 		self.status.V = (r_bits.7
@@ -599,7 +599,7 @@ impl Cpu {
 			rd += 16
 		}
 
-		let result = self.sram.registers[rd as usize].wrapping_sub(0x01);
+		let result = self.sram.registers[rd as usize].wrapping_sub(1);
 		let r_bits = bits_u8(result);
 
 		self.status.V = (!r_bits.7
