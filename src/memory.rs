@@ -12,6 +12,9 @@ const APP_FLASH_SIZE: u16 = 0x7800;
 const BOOT_FLASH_SIZE: u16 = 0x800;
 const EEPROM_SIZE: u16 = 0x400;
 
+pub const RAMEND: u16 = SRAM_RANGE.end - 1;
+pub const FLASH_START: u16 = BOOT_FLASH_RANGE.start;
+
 //------------------ Programmable Flash Memory --------------------------------
 
 pub trait Memory {
@@ -58,12 +61,12 @@ impl Memory for BootFlash {
 	}
 
 	fn read(&mut self, address: u16) -> u16 {
-		let mapped_address = address - 0x3800;
+		let mapped_address = address - FLASH_START;
 		self.data[(mapped_address as usize)]
 	}
 
 	fn write(&mut self, address: u16, data: u16) {
-		let mapped_address = address - 0x3800;
+		let mapped_address = address - FLASH_START;
 		self.data[(mapped_address as usize)] = data;
 	}
 }
@@ -151,7 +154,7 @@ pub struct Sram {
 	pub registers: Vec<u8>,
 	pub io_registers: Vec<u8>,
 	pub ext_io_registers: Vec<u8>,
-	pub internal_data: Vec<u8>,
+	pub internal_ram: Vec<u8>,
 }
 
 impl Default for Sram {
@@ -160,7 +163,7 @@ impl Default for Sram {
 			registers: vec![0; 32],
 			io_registers: vec![0; 64],
 			ext_io_registers: vec![0; 160],
-			internal_data: vec![0; 2048],
+			internal_ram: vec![0; 2048],
 		}
 	}
 }
@@ -183,7 +186,7 @@ impl Memory for Sram {
 			}
 			0x0100..=0x08FF => {
 				let mapped_address = address - 0x0100;
-				self.internal_data[mapped_address as usize] as u16
+				self.internal_ram[mapped_address as usize] as u16
 			}
 			_ => panic!("SRAM does not contain address 0x{:x?}", address),
 		}
