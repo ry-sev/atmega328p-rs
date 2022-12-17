@@ -13,6 +13,7 @@ const BOOT_FLASH_SIZE: u16 = 0x800;
 const EEPROM_SIZE: u16 = 0x400;
 
 pub const RAMEND: u16 = SRAM_RANGE.end - 1;
+pub const PROGRAM_START: u16 = PROGRAM_FLASH_RANGE.start;
 pub const FLASH_START: u16 = BOOT_FLASH_RANGE.start;
 
 //------------------ Programmable Flash Memory --------------------------------

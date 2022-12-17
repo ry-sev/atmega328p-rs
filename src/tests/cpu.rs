@@ -1,17 +1,12 @@
 #[cfg(test)]
 mod instructions {
 	mod arithmetic {
-		use crate::{cpu::Cpu, memory::Memory};
+		use crate::cpu::Cpu;
 		#[test]
 		fn add() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 4] = [0x0C00, 0x0D7A, 0x0E75, 0x0F35];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system
+				.flash_from_vec([0x0C00, 0x0D7A, 0x0E75, 0x0F35].to_vec());
 
 			cpu.sram.registers[0] = 10;
 			cpu.sram.registers[23] = 2;
@@ -35,13 +30,8 @@ mod instructions {
 		#[test]
 		fn adc() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 4] = [0x1C28, 0x1D48, 0x1E5A, 0x1FCF];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system
+				.flash_from_vec([0x1C28, 0x1D48, 0x1E5A, 0x1FCF].to_vec());
 
 			cpu.status.C = true;
 
@@ -74,13 +64,8 @@ mod instructions {
 		#[test]
 		fn adiw() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 4] = [0x9600, 0x9628, 0x96A3, 0x96FF];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system
+				.flash_from_vec([0x9600, 0x9628, 0x96A3, 0x96FF].to_vec());
 
 			cpu.sram.registers[24] = 2;
 			cpu.sram.registers[25] = 3;
@@ -119,13 +104,8 @@ mod instructions {
 		#[test]
 		fn sub() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 4] = [0x1847, 0x198C, 0x1AB3, 0x1B02];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system
+				.flash_from_vec([0x1847, 0x198C, 0x1AB3, 0x1B02].to_vec());
 
 			cpu.sram.registers[4] = 10;
 			cpu.sram.registers[7] = 3;
@@ -150,13 +130,7 @@ mod instructions {
 		#[test]
 		fn subi() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 2] = [0x5135, 0x53CA];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system.flash_from_vec([0x5135, 0x53CA].to_vec());
 
 			cpu.sram.registers[19] = 35;
 			cpu.sram.registers[28] = 70;
@@ -171,13 +145,7 @@ mod instructions {
 		#[test]
 		fn sbc() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 2] = [0x08B9, 0x0B0D];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system.flash_from_vec([0x08B9, 0x0B0D].to_vec());
 
 			cpu.sram.registers[9] = 10;
 			cpu.sram.registers[11] = 25;
@@ -195,13 +163,7 @@ mod instructions {
 		#[test]
 		fn sbci() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 2] = [0x4048, 0x4242];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system.flash_from_vec([0x4048, 0x4242].to_vec());
 
 			cpu.sram.registers[20] = 88;
 
@@ -215,9 +177,11 @@ mod instructions {
 		#[test]
 		fn sbiw() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9760);
+			cpu.system.flash_from_vec([0x9760].to_vec());
+
 			cpu.sram.registers[28] = 0xAA;
 			cpu.sram.registers[29] = 0x55;
+
 			cpu.step();
 			assert_eq!(cpu.sram.registers[28], 0x9A);
 			assert_eq!(cpu.sram.registers[29], 0x55);
@@ -226,13 +190,7 @@ mod instructions {
 		#[test]
 		fn and() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 2] = [0x2000, 0x2038];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system.flash_from_vec([0x2000, 0x2038].to_vec());
 
 			cpu.sram.registers[0] = 0;
 			cpu.sram.registers[3] = 67;
@@ -248,22 +206,19 @@ mod instructions {
 		#[test]
 		fn andi() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x7227);
+			cpu.system.flash_from_vec([0x7227].to_vec());
+
 			cpu.sram.registers[18] = 30;
+
 			cpu.step();
+
 			assert_eq!(cpu.sram.registers[18], 6);
 		}
 
 		#[test]
 		fn or() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 2] = [0x2800, 0x2935];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system.flash_from_vec([0x2800, 0x2935].to_vec());
 
 			cpu.sram.registers[0] = 72;
 			cpu.sram.registers[5] = 5;
@@ -279,8 +234,10 @@ mod instructions {
 		#[test]
 		fn ori() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x614C);
+			cpu.system.flash_from_vec([0x614C].to_vec());
+
 			cpu.sram.registers[20] = 84;
+
 			cpu.step();
 			assert_eq!(cpu.sram.registers[20], 92);
 		}
@@ -288,13 +245,7 @@ mod instructions {
 		#[test]
 		fn eor() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 2] = [0x2700, 0x256A];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system.flash_from_vec([0x2700, 0x256A].to_vec());
 
 			cpu.sram.registers[16] = 39;
 			cpu.sram.registers[10] = 17;
@@ -310,13 +261,7 @@ mod instructions {
 		#[test]
 		fn com() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 2] = [0x94B0, 0x9540];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system.flash_from_vec([0x94B0, 0x9540].to_vec());
 
 			cpu.sram.registers[11] = 14;
 			cpu.sram.registers[20] = 99;
@@ -331,13 +276,7 @@ mod instructions {
 		#[test]
 		fn neg() {
 			let mut cpu = Cpu::init();
-			let prg: [u16; 2] = [0x9411, 0x9581];
-
-			for (index, word) in prg.into_iter().enumerate() {
-				cpu.system
-					.program_memory
-					.write(0x0000 + (index as u16), word);
-			}
+			cpu.system.flash_from_vec([0x9411, 0x9581].to_vec());
 
 			cpu.sram.registers[1] = 81;
 			cpu.sram.registers[24] = 37;
@@ -352,7 +291,7 @@ mod instructions {
 		#[test]
 		fn inc() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9493);
+			cpu.system.flash_from_vec([0x9493].to_vec());
 			cpu.sram.registers[9] = 1;
 			cpu.step();
 			assert_eq!(cpu.sram.registers[9], 2);
@@ -361,7 +300,7 @@ mod instructions {
 		#[test]
 		fn dec() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x957A);
+			cpu.system.flash_from_vec([0x957A].to_vec());
 			cpu.sram.registers[23] = 1;
 			cpu.step();
 			assert_eq!(cpu.sram.registers[23], 0);
@@ -370,7 +309,7 @@ mod instructions {
 		#[test]
 		fn mul() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9C00);
+			cpu.system.flash_from_vec([0x9C00].to_vec());
 			cpu.sram.registers[0] = 255;
 			cpu.step();
 			assert_eq!(cpu.sram.registers[0], 0x01);
@@ -380,7 +319,7 @@ mod instructions {
 		#[test]
 		fn muls() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x0218);
+			cpu.system.flash_from_vec([0x0218].to_vec());
 			cpu.sram.registers[17] = 242;
 			cpu.sram.registers[24] = 223;
 			cpu.step();
@@ -391,7 +330,7 @@ mod instructions {
 		#[test]
 		fn mulsu() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x0324);
+			cpu.system.flash_from_vec([0x0324].to_vec());
 			cpu.sram.registers[18] = 128;
 			cpu.sram.registers[20] = 192;
 			cpu.step();
@@ -403,11 +342,11 @@ mod instructions {
 	mod branch {}
 
 	mod bit {
-		use crate::{cpu::Cpu, memory::Memory};
+		use crate::cpu::Cpu;
 		#[test]
 		fn sec() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9408);
+			cpu.system.flash_from_vec([0x9408].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.C, true);
 		}
@@ -415,7 +354,7 @@ mod instructions {
 		#[test]
 		fn clc() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9488);
+			cpu.system.flash_from_vec([0x9488].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.C, false);
 		}
@@ -423,7 +362,7 @@ mod instructions {
 		#[test]
 		fn sen() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9428);
+			cpu.system.flash_from_vec([0x9428].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.N, true);
 		}
@@ -431,7 +370,7 @@ mod instructions {
 		#[test]
 		fn cln() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x94A8);
+			cpu.system.flash_from_vec([0x94A8].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.N, false);
 		}
@@ -439,7 +378,7 @@ mod instructions {
 		#[test]
 		fn sez() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9418);
+			cpu.system.flash_from_vec([0x9418].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.Z, true);
 		}
@@ -447,7 +386,7 @@ mod instructions {
 		#[test]
 		fn clz() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9498);
+			cpu.system.flash_from_vec([0x9498].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.Z, false);
 		}
@@ -455,7 +394,7 @@ mod instructions {
 		#[test]
 		fn sei() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9478);
+			cpu.system.flash_from_vec([0x9478].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.I, true);
 		}
@@ -463,7 +402,7 @@ mod instructions {
 		#[test]
 		fn cli() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x94F8);
+			cpu.system.flash_from_vec([0x94F8].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.I, false);
 		}
@@ -471,7 +410,7 @@ mod instructions {
 		#[test]
 		fn ses() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9448);
+			cpu.system.flash_from_vec([0x9448].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.S, true);
 		}
@@ -479,7 +418,7 @@ mod instructions {
 		#[test]
 		fn cls() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x94C8);
+			cpu.system.flash_from_vec([0x94C8].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.S, false);
 		}
@@ -487,7 +426,7 @@ mod instructions {
 		#[test]
 		fn sev() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9438);
+			cpu.system.flash_from_vec([0x9438].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.V, true);
 		}
@@ -495,7 +434,7 @@ mod instructions {
 		#[test]
 		fn clv() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x94B8);
+			cpu.system.flash_from_vec([0x94B8].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.V, false);
 		}
@@ -503,7 +442,7 @@ mod instructions {
 		#[test]
 		fn set() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9468);
+			cpu.system.flash_from_vec([0x9468].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.T, true);
 		}
@@ -511,7 +450,7 @@ mod instructions {
 		#[test]
 		fn clt() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x94E8);
+			cpu.system.flash_from_vec([0x94E8].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.T, false);
 		}
@@ -519,7 +458,7 @@ mod instructions {
 		#[test]
 		fn seh() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x9458);
+			cpu.system.flash_from_vec([0x9458].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.H, true);
 		}
@@ -527,7 +466,7 @@ mod instructions {
 		#[test]
 		fn clh() {
 			let mut cpu = Cpu::init();
-			cpu.system.program_memory.write(0x0000, 0x94D8);
+			cpu.system.flash_from_vec([0x94D8].to_vec());
 			cpu.step();
 			assert_eq!(cpu.status.H, false);
 		}
