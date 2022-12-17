@@ -1,4 +1,4 @@
-use crate::memory::{Memory, Sram};
+use crate::memory::{Memory, Sram, RAMEND};
 use crate::system::System;
 use crate::utils::{bits_u16, bits_u8, high_byte};
 
@@ -64,7 +64,7 @@ impl Cpu {
 		Self {
 			system: System::default(),
 			sram: Sram::default(),
-			sp: 0x0000,
+			sp: RAMEND,
 			status: Sreg::default(),
 			pc: 0x0000,
 			cycles: 0,
@@ -73,7 +73,7 @@ impl Cpu {
 	}
 
 	pub fn reset(&mut self) {
-		self.sp = 0x0000;
+		self.sp = RAMEND;
 		self.pc = 0x0000;
 		self.cycles = 0;
 	}
@@ -114,7 +114,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -153,7 +152,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -186,7 +184,6 @@ impl Cpu {
 		self.sram.registers[d as usize] = result_low;
 		self.sram.registers[(d + 1) as usize] = result_high;
 
-		self.pc += 1;
 		self.cycles += 2;
 	}
 
@@ -225,7 +222,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -251,7 +247,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -291,7 +286,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -317,7 +311,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -351,7 +344,6 @@ impl Cpu {
 		self.sram.registers[d as usize] = result_low;
 		self.sram.registers[(d + 1) as usize] = result_high;
 
-		self.pc += 1;
 		self.cycles += 2;
 	}
 
@@ -382,7 +374,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -404,7 +395,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -435,7 +425,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -457,7 +446,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -488,7 +476,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -512,7 +499,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -544,7 +530,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -586,7 +571,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -617,7 +601,6 @@ impl Cpu {
 
 		self.sram.registers[rd as usize] = result;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -628,7 +611,6 @@ impl Cpu {
 
 		// if the DES instruction is succeeding a non-DES instruction, an extra cycle is inserted.
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -677,7 +659,6 @@ impl Cpu {
 		self.sram.registers[0] = result_low;
 		self.sram.registers[1] = result_high;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -701,7 +682,6 @@ impl Cpu {
 		self.sram.registers[0] = result_low;
 		self.sram.registers[1] = result_high;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -726,7 +706,6 @@ impl Cpu {
 		self.sram.registers[0] = result_low;
 		self.sram.registers[1] = result_high;
 
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -890,97 +869,81 @@ impl Cpu {
 
 	fn sec(&mut self) {
 		self.status.C = true;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn clc(&mut self) {
 		self.status.C = false;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn sen(&mut self) {
 		self.status.N = true;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn cln(&mut self) {
 		self.status.N = false;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn sez(&mut self) {
 		self.status.Z = true;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn clz(&mut self) {
 		self.status.Z = false;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn sei(&mut self) {
 		self.status.I = true;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn cli(&mut self) {
 		self.status.I = false;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn ses(&mut self) {
 		self.status.S = true;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn cls(&mut self) {
 		self.status.S = false;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn sev(&mut self) {
 		self.status.V = true;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn clv(&mut self) {
 		self.status.V = false;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn set(&mut self) {
 		self.status.T = true;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn clt(&mut self) {
 		self.status.T = false;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn seh(&mut self) {
 		self.status.H = true;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
 	fn clh(&mut self) {
 		self.status.H = false;
-		self.pc += 1;
 		self.cycles += 1;
 	}
 
@@ -1028,17 +991,14 @@ impl Cpu {
 
 	fn nop(&mut self) {
 		self.cycles += 1;
-		self.pc += 1;
 	}
 
 	fn sleep(&mut self) {
 		self.cycles += 1;
-		self.pc += 1;
 	}
 
 	fn wdr(&mut self) {
 		self.cycles += 1;
-		self.pc += 1;
 	}
 
 	fn break_(&mut self) {}
@@ -1046,11 +1006,11 @@ impl Cpu {
 	fn reserved(&mut self) {
 		println!("Reserved opcode: {:x?}", self.opcode);
 		self.cycles += 1;
-		self.pc += 1;
 	}
 
 	pub fn step(&mut self) {
 		self.opcode = self.system.program_memory.read(self.pc);
+		self.pc += 1;
 
 		let low_byte = (self.opcode & 0xF) as u8;
 		let high_byte = ((self.opcode >> 4) & 0xF) as u8;
