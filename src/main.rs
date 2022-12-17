@@ -4,6 +4,7 @@
 mod tests;
 
 mod cpu;
+mod disassembler;
 mod gui;
 mod memory;
 mod system;

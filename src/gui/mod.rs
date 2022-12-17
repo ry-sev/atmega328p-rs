@@ -1,8 +1,10 @@
+mod assembly_view;
 mod cpu_state;
 mod memory_view;
 mod menu;
 
 use crate::cpu::Cpu;
+use assembly_view::AssemblyView;
 use cpu_state::CpuState;
 use eframe::egui;
 use egui::Sense;
@@ -15,6 +17,7 @@ pub struct App {
 	menu_bar: MenuBar,
 	cpu_state: CpuState,
 	memory_view: MemoryView,
+	assembly_view: AssemblyView,
 	running: bool,
 }
 
@@ -67,13 +70,13 @@ impl eframe::App for App {
 			});
 		});
 
-		egui::SidePanel::right("right_panel")
+		egui::SidePanel::right("cpu_state")
 			.resizable(false)
 			.show(ctx, |ui| {
 				self.cpu_state.ui(ui, &mut self.cpu);
 			});
 
-		egui::TopBottomPanel::bottom("bottom_panel")
+		egui::TopBottomPanel::bottom("memory_view")
 			.min_height(200.0)
 			.resizable(false)
 			.show(ctx, |ui| {
@@ -82,6 +85,9 @@ impl eframe::App for App {
 
 		egui::CentralPanel::default().show(ctx, |ui| {
 			egui::warn_if_debug_build(ui);
+			if let Some(assembly) = &self.cpu.system.disassembler.assembly {
+				self.assembly_view.ui(ui, assembly);
+			}
 		});
 	}
 }
