@@ -1,4 +1,7 @@
-use crate::{cpu::Cpu, memory::REGISTER_NAMES};
+use crate::{
+	cpu::Cpu,
+	memory::{Memory, REGISTER_NAMES},
+};
 use egui_extras::{Column, TableBuilder};
 
 const PADDING_SIZE: f32 = 4.0;
@@ -86,7 +89,7 @@ impl Default for CpuState {
 }
 
 impl CpuState {
-	pub fn ui(&mut self, ui: &mut egui::Ui, cpu: &Cpu) {
+	pub fn ui(&mut self, ui: &mut egui::Ui, cpu: &mut Cpu) {
 		ui.add_space(PADDING_SIZE);
 
 		ui.label("CPU State");
@@ -118,7 +121,7 @@ impl CpuState {
 				ui.end_row();
 
 				ui.label("Instruction:");
-				ui.label(format!("0x{:04X}", cpu.opcode));
+				ui.label(format!("0x{:04X}", cpu.system.program_memory.read(cpu.pc)));
 
 				ui.end_row();
 

@@ -70,7 +70,7 @@ impl eframe::App for App {
 		egui::SidePanel::right("right_panel")
 			.resizable(false)
 			.show(ctx, |ui| {
-				self.cpu_state.ui(ui, &self.cpu);
+				self.cpu_state.ui(ui, &mut self.cpu);
 			});
 
 		egui::TopBottomPanel::bottom("bottom_panel")
