@@ -86,7 +86,7 @@ impl eframe::App for App {
 		egui::CentralPanel::default().show(ctx, |ui| {
 			egui::warn_if_debug_build(ui);
 			if let Some(assembly) = &self.cpu.system.disassembler.assembly {
-				self.assembly_view.ui(ui, assembly);
+				self.assembly_view.ui(ui, assembly, &self.cpu.pc);
 			}
 		});
 	}

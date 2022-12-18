@@ -6,11 +6,16 @@ use std::collections::BTreeMap;
 pub struct AssemblyView {}
 
 impl AssemblyView {
-	pub fn ui(&mut self, ui: &mut egui::Ui, assembly: &BTreeMap<u16, InstructionString>) {
+	pub fn ui(
+		&mut self,
+		ui: &mut egui::Ui,
+		assembly: &BTreeMap<u16, InstructionString>,
+		program_counter: &u16,
+	) {
 		let table = TableBuilder::new(ui)
 			.striped(true)
 			.cell_layout(egui::Layout::left_to_right(egui::Align::LEFT))
-			.column(Column::exact(50.0))
+			.column(Column::exact(60.0))
 			.column(Column::exact(60.0))
 			.column(Column::remainder())
 			.resizable(false);
@@ -31,10 +36,14 @@ impl AssemblyView {
 				for (_, instruction) in assembly {
 					body.row(18.0, |mut row| {
 						row.col(|ui| {
-							ui.label(&instruction.address);
+							if &instruction.address == program_counter {
+								ui.code(format!("0x{:04X}", &instruction.address));
+							} else {
+								ui.label(format!("0x{:04X}", &instruction.address));
+							}
 						});
 						row.col(|ui| {
-							ui.label(&instruction.opcode);
+							ui.label(format!("0x{:04X}", &instruction.opcode));
 						});
 						row.col(|ui| {
 							ui.label(&instruction.instruction);
