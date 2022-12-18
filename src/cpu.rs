@@ -232,7 +232,7 @@ impl Cpu {
 		rd += 16;
 
 		let k = ((((self.opcode >> 8) & 0xF) << 4) | (self.opcode & 0xF)) as u8;
-		let result = self.sram.registers[rd as usize] - k;
+		let result = self.sram.registers[rd as usize].wrapping_sub(k);
 
 		let r_bits = bits_u8(result);
 		let rd_bits = bits_u8(rd);
@@ -267,8 +267,8 @@ impl Cpu {
 		}
 
 		let result = self.sram.registers[rd as usize]
-			- self.sram.registers[rr as usize]
-			- self.status.C as u8;
+			.wrapping_sub(self.sram.registers[rr as usize])
+			.wrapping_sub(self.status.C as u8);
 
 		let r_bits = bits_u8(result);
 		let rd_bits = bits_u8(rd);
@@ -296,7 +296,9 @@ impl Cpu {
 		rd += 16;
 
 		let k = ((((self.opcode >> 8) & 0xF) << 4) | (self.opcode & 0xF)) as u8;
-		let result = self.sram.registers[rd as usize] - k - self.status.C as u8;
+		let result = self.sram.registers[rd as usize]
+			.wrapping_sub(k)
+			.wrapping_sub(self.status.C as u8);
 
 		let r_bits = bits_u8(result);
 		let rd_bits = bits_u8(rd);
@@ -327,7 +329,7 @@ impl Cpu {
 		let rd_high = self.sram.registers[(d + 1) as usize] as u16;
 		let rd = (rd_high << 8) | rd_low;
 
-		let result = rd - k;
+		let result = rd.wrapping_sub(k);
 		let result_low = (result & 0xFF) as u8;
 		let result_high = ((result >> 8) & 0xFF) as u8;
 
@@ -1004,7 +1006,7 @@ impl Cpu {
 	fn break_(&mut self) {}
 
 	fn reserved(&mut self) {
-		println!("Reserved opcode: {:x?}", self.opcode);
+		println!("Reserved opcode: 0x{:04X}", self.opcode);
 		self.cycles += 1;
 	}
 
