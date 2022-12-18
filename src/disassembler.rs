@@ -1,25 +1,98 @@
 use crate::memory::{ApplicationFlash, Memory};
+use crate::utils;
 use std::collections::BTreeMap;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct InstructionString {
-	pub address: String,
-	pub opcode: String,
+	pub address: u16,
+	pub opcode: u16,
 	pub instruction: String,
 }
 
 #[derive(Debug)]
 pub struct Disassembler {
 	pub assembly: Option<BTreeMap<u16, InstructionString>>,
+	opcode: u16,
 }
 
 impl Default for Disassembler {
 	fn default() -> Self {
-		Self { assembly: None }
+		Self {
+			assembly: None,
+			opcode: 0x0000,
+		}
 	}
 }
 
 impl Disassembler {
+	fn create_string_with_two_registers(
+		&self,
+		match_start: u8,
+		instruction: String,
+		inst_string: &mut String,
+	) {
+		let mut destination = ((self.opcode & 0xF0) >> 4) as u8;
+		let mut source = (self.opcode & 0xF) as u8;
+		let num_2 = match_start + 1;
+		let num_3 = match_start + 2;
+		match utils::high_byte(self.opcode) {
+			match_start => destination += 16,
+			num_2 => source += 16,
+			num_3 => {
+				destination += 16;
+				source += 16;
+			}
+			_ => {}
+		}
+		inst_string.push_str(format!("{} r{}, r{}", instruction, destination, source).as_str());
+	}
+
+	fn create_string_with_two_registers_2(
+		&self,
+		and_value_1: u16,
+		and_value_2: u16,
+		instruction: String,
+		inst_string: &mut String,
+	) {
+		let destination = (((self.opcode & and_value_1) >> 4) as u8) + 16;
+		let source = ((self.opcode & and_value_2) as u8) + 16;
+		inst_string.push_str(format!("{} r{}, r{}", instruction, destination, source).as_str());
+	}
+
+	fn create_string_with_register_and_constant(
+		&self,
+		instruction: String,
+		inst_string: &mut String,
+	) {
+		let destination = (((self.opcode & 0xF0) >> 4) as u8) + 16;
+		let value = ((((self.opcode >> 8) & 0xF) << 4) | (self.opcode & 0xF)) as u8;
+		inst_string.push_str(
+			format!(
+				"{} r{}, 0x{:02X} [{}]",
+				instruction, destination, value, value
+			)
+			.as_str(),
+		);
+	}
+
+	fn create_string_with_registers_and_word(&self, instruction: String, inst_string: &mut String) {
+		let mut value = self.opcode & 0xF;
+		value |= (self.opcode & (1 << 6)) >> 2;
+		value |= (self.opcode & (1 << 7)) >> 2;
+		let destination = (((self.opcode >> 4 & 0xF) & 0x3) * 2 + 24) as u8;
+		inst_string.push_str(
+			format!(
+				"{} r{}:r{}, 0x{:02X} [{}]",
+				instruction,
+				destination + 1,
+				destination,
+				value,
+				value
+			)
+			.as_str(),
+		);
+	}
+
 	pub fn disassemble(
 		&mut self,
 		program: &mut ApplicationFlash,
@@ -31,17 +104,17 @@ impl Disassembler {
 
 		while current_address < end_address {
 			let id = current_address;
-			let address = format!("0x{:04X}", current_address);
-			let opcode = program.read(current_address);
-			let opcode_string = format!("0x{:04X}", opcode);
+			let address = current_address;
+			self.opcode = program.read(current_address);
+			let opcode = self.opcode;
 
-			let low_byte = (opcode & 0xF) as u8;
-			let high_byte = ((opcode >> 4) & 0xF) as u8;
+			let low_byte = (self.opcode & 0xF) as u8;
+			let high_byte = ((self.opcode >> 4) & 0xF) as u8;
 
 			let mut instruction = String::new();
 
-			match opcode {
-				0x0000..=0x00FF => match (opcode & 0xFF) as u8 {
+			match self.opcode {
+				0x0000..=0x00FF => match (self.opcode & 0xFF) as u8 {
 					0x00 => instruction.push_str("nop"),
 					_ => instruction.push_str("[R]"),
 				},
@@ -49,24 +122,49 @@ impl Disassembler {
 					//movw
 				}
 				0x0200..=0x02FF => {
-					//muls
+					self.create_string_with_two_registers_2(
+						0xF0,
+						0xF,
+						"muls".to_string(),
+						&mut instruction,
+					);
 				}
 				0x0300..=0x03FF => match low_byte {
 					0x0..=0x7 => match high_byte {
 						0x0..=0x7 => {
-							//mulsu
+							self.create_string_with_two_registers_2(
+								0x70,
+								0x7,
+								"mulsu".to_string(),
+								&mut instruction,
+							);
 						}
 						0x8..=0xF => {
-							//fmuls
+							self.create_string_with_two_registers_2(
+								0x70,
+								0x7,
+								"fmuls".to_string(),
+								&mut instruction,
+							);
 						}
 						_ => unreachable!(),
 					},
 					0x8..=0xF => match high_byte {
 						0x0..=0x7 => {
-							//fmul
+							self.create_string_with_two_registers_2(
+								0x70,
+								0x7,
+								"fmul".to_string(),
+								&mut instruction,
+							);
 						}
 						0x8..=0xF => {
-							//fmulsu
+							self.create_string_with_two_registers_2(
+								0x70,
+								0x7,
+								"fmulsu".to_string(),
+								&mut instruction,
+							);
 						}
 						_ => unreachable!(),
 					},
@@ -76,10 +174,18 @@ impl Disassembler {
 					//cpc
 				}
 				0x0800..=0x0BFF => {
-					//sbc
+					self.create_string_with_two_registers(
+						0x09,
+						"sbc".to_string(),
+						&mut instruction,
+					);
 				}
 				0x0C00..=0x0FFF => {
-					//add
+					self.create_string_with_two_registers(
+						0x0D,
+						"add".to_string(),
+						&mut instruction,
+					);
 				}
 				0x1000..=0x13FF => {
 					//cpse
@@ -88,19 +194,35 @@ impl Disassembler {
 					//cp
 				}
 				0x1800..=0x1BFF => {
-					//sub
+					self.create_string_with_two_registers(
+						0x19,
+						"sub".to_string(),
+						&mut instruction,
+					);
 				}
 				0x1C00..=0x1FFF => {
-					//adc
+					self.create_string_with_two_registers(
+						0x1D,
+						"adc".to_string(),
+						&mut instruction,
+					);
 				}
 				0x2000..=0x23FF => {
-					//and
+					self.create_string_with_two_registers(
+						0x21,
+						"and".to_string(),
+						&mut instruction,
+					);
 				}
 				0x2400..=0x27FF => {
-					//eor
+					self.create_string_with_two_registers(
+						0x25,
+						"eor".to_string(),
+						&mut instruction,
+					);
 				}
 				0x2800..=0x2BFF => {
-					//or
+					self.create_string_with_two_registers(0x29, "or".to_string(), &mut instruction);
 				}
 				0x2C00..=0x2FFF => {
 					//mov
@@ -109,16 +231,28 @@ impl Disassembler {
 					//cpi
 				}
 				0x4000..=0x4FFF => {
-					//sbci
+					self.create_string_with_register_and_constant(
+						"sbci".to_string(),
+						&mut instruction,
+					);
 				}
 				0x5000..=0x5FFF => {
-					//subi
+					self.create_string_with_register_and_constant(
+						"subi".to_string(),
+						&mut instruction,
+					);
 				}
 				0x6000..=0x6FFF => {
-					//ori
+					self.create_string_with_register_and_constant(
+						"ori".to_string(),
+						&mut instruction,
+					);
 				}
 				0x7000..=0x7FFF => {
-					//andi
+					self.create_string_with_register_and_constant(
+						"andi".to_string(),
+						&mut instruction,
+					);
 				}
 				0x8000..=0x81FF => {
 					//ldd
@@ -190,10 +324,12 @@ impl Disassembler {
 				},
 				0x9400..=0x94FF => match low_byte {
 					0x0 => {
-						//com
+						let source = ((self.opcode & 0xF0) >> 4) as u8;
+						instruction.push_str(format!("com r{}", source).as_str());
 					}
 					0x1 => {
-						//neg
+						let source = ((self.opcode & 0xF0) >> 4) as u8;
+						instruction.push_str(format!("neg r{}", source).as_str());
 					}
 					0x2 => {
 						//swap
@@ -235,10 +371,12 @@ impl Disassembler {
 						_ => instruction.push_str("[R]"),
 					},
 					0xA => {
-						//dec
+						let source = ((self.opcode & 0xF0) >> 4) as u8;
+						instruction.push_str(format!("dec r{}", source).as_str());
 					}
 					0xB => {
-						//des
+						let value = ((self.opcode & 0xF0) >> 4) as u8;
+						instruction.push_str(format!("des 0x{:02X} [{}]", value, value).as_str());
 					}
 					0xC..=0xD => {
 						//jmp
@@ -250,10 +388,12 @@ impl Disassembler {
 				},
 				0x9500..=0x95FF => match low_byte {
 					0x00 => {
-						//com
+						let source = (((self.opcode & 0xF0) >> 4) as u8) + 16;
+						instruction.push_str(format!("com r{}", source).as_str());
 					}
 					0x01 => {
-						//neg
+						let source = (((self.opcode & 0xF0) >> 4) as u8) + 16;
+						instruction.push_str(format!("neg r{}", source).as_str());
 					}
 					0x02 => {
 						//swap
@@ -290,7 +430,8 @@ impl Disassembler {
 						_ => instruction.push_str("[R]"),
 					},
 					0x0A => {
-						//dec
+						let source = (((self.opcode & 0xF0) >> 4) as u8) + 16;
+						instruction.push_str(format!("dec r{}", source).as_str());
 					}
 					0x0B => instruction.push_str("[R]"),
 					0xC..=0xD => {
@@ -302,10 +443,16 @@ impl Disassembler {
 					_ => unreachable!(),
 				},
 				0x9600..=0x96FF => {
-					//adiw
+					self.create_string_with_registers_and_word(
+						"adiw".to_string(),
+						&mut instruction,
+					);
 				}
 				0x9700..=0x97FF => {
-					//sbiw
+					self.create_string_with_registers_and_word(
+						"sbiw".to_string(),
+						&mut instruction,
+					);
 				}
 				0x9800..=0x98FF => {
 					//cbi
@@ -320,7 +467,11 @@ impl Disassembler {
 					//sbis
 				}
 				0x9C00..=0x9FFF => {
-					//mul
+					self.create_string_with_two_registers(
+						0x9D,
+						"mul".to_string(),
+						&mut instruction,
+					);
 				}
 				0xA000..=0xA1FF => {
 					//ldd
@@ -476,12 +627,11 @@ impl Disassembler {
 					//sbrs
 				}
 			}
-
 			assembly.insert(
 				id,
 				InstructionString {
 					address,
-					opcode: opcode_string,
+					opcode,
 					instruction,
 				},
 			);
