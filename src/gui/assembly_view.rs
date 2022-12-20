@@ -1,4 +1,4 @@
-use crate::disassembler::InstructionString;
+use crate::disassembler::Instruction;
 use egui_extras::{Column, TableBuilder};
 use std::collections::BTreeMap;
 
@@ -9,7 +9,7 @@ impl AssemblyView {
 	pub fn ui(
 		&mut self,
 		ui: &mut egui::Ui,
-		assembly: &BTreeMap<u16, InstructionString>,
+		assembly: &BTreeMap<u16, Instruction>,
 		program_counter: &u16,
 	) {
 		let table = TableBuilder::new(ui)
@@ -46,7 +46,8 @@ impl AssemblyView {
 							ui.label(format!("0x{:04X}", &instruction.opcode));
 						});
 						row.col(|ui| {
-							ui.label(&instruction.instruction);
+							ui.colored_label(egui::Color32::LIGHT_RED, &instruction.instruction);
+							ui.label(&instruction.operands);
 						});
 					});
 				}

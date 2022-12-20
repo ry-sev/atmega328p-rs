@@ -52,6 +52,12 @@ impl Default for ApplicationFlash {
 	}
 }
 
+impl ApplicationFlash {
+	pub fn clear(&mut self) {
+		self.data = vec![0; APP_FLASH_SIZE as usize];
+	}
+}
+
 #[derive(Debug)]
 pub struct BootFlash {
 	pub data: Vec<u16>,

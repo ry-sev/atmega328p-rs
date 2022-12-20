@@ -38,7 +38,7 @@ impl eframe::App for App {
 		}
 
 		egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
-			self.menu_bar.ui(ui, frame);
+			self.menu_bar.ui(ui, frame, &mut self.cpu.system);
 		});
 
 		egui::TopBottomPanel::top("toolbar_panel").show(ctx, |ui| {

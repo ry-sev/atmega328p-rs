@@ -955,7 +955,16 @@ impl Cpu {
 
 	fn movw(&mut self) {}
 
-	fn ldi(&mut self) {}
+	fn ldi(&mut self) {
+		// 1110 kkkk dddd kkkk
+
+		let mut rd = ((self.opcode & 0xF0) >> 4) as u8;
+		rd += 16;
+
+		let k = ((((self.opcode >> 8) & 0xF) << 4) | (self.opcode & 0xF)) as u8;
+		self.sram.registers[rd as usize] = k;
+		self.cycles += 1;
+	}
 
 	fn ld_x(&mut self) {}
 
@@ -983,7 +992,13 @@ impl Cpu {
 
 	fn in_(&mut self) {}
 
-	fn out(&mut self) {}
+	fn out(&mut self) {
+		// 1011 1AAr rrrr AAAA
+		let rr = (self.opcode & 0x1F0) >> 4;
+		let a = (self.opcode & 0xF) | ((self.opcode & 0x600) >> 5);
+		self.sram.io_registers[a as usize] = self.sram.registers[rr as usize];
+		self.cycles += 1;
+	}
 
 	fn push(&mut self) {}
 
@@ -1053,7 +1068,11 @@ impl Cpu {
 			0x5000..=0x5FFF => self.subi(),
 			0x6000..=0x6FFF => self.ori(),
 			0x7000..=0x7FFF => self.andi(),
-			0x8000..=0x81FF => self.ldd(),
+			0x8000..=0x81FF => {
+				self.ld_z();
+				self.ld_y();
+				self.ldd();
+			}
 			0x8200..=0x83FF => self.std(),
 			0x8400..=0x85FF => self.ldd(),
 			0x8600..=0x87FF => self.std(),
